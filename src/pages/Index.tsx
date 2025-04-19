@@ -9,7 +9,7 @@ const Index = () => {
     // Check if user is logged in
     const userData = localStorage.getItem("finmateUser");
     if (userData) {
-      navigate("/");
+      navigate("/dashboard");
     } else {
       navigate("/auth");
     }
