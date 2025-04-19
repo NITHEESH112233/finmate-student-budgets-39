@@ -10,11 +10,21 @@ import {
   Wallet,
   Settings,
   LogOut,
-  Menu
+  Menu,
+  User
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const MobileNav = () => {
-  const user = { name: "Student User" };
+  const [user, setUser] = useState<any>(null);
+  
+  useEffect(() => {
+    // Get user data from localStorage
+    const userData = localStorage.getItem("finmateUser");
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, []);
 
   const navItems = [
     { icon: Home, label: "Dashboard", path: "/" },
@@ -23,8 +33,14 @@ const MobileNav = () => {
     { icon: Wallet, label: "Income", path: "/income" },
     { icon: BarChart, label: "Reports", path: "/reports" },
     { icon: Wallet, label: "Goals", path: "/goals" },
+    { icon: User, label: "Profile", path: "/profile" },
     { icon: Settings, label: "Settings", path: "/settings" },
   ];
+
+  const handleLogout = () => {
+    localStorage.removeItem("finmateUser");
+    window.location.href = "/auth";
+  };
 
   return (
     <header className="sticky top-0 z-10 bg-white border-b border-gray-200 md:hidden">
@@ -55,7 +71,10 @@ const MobileNav = () => {
               <div className="mb-8">
                 <div className="px-4 py-3 bg-finmate-light-purple rounded-lg">
                   <p className="text-sm text-gray-600">Welcome</p>
-                  <p className="font-medium">{user.name}</p>
+                  <p className="font-medium">{user?.name || "Guest"}</p>
+                  {user?.university && (
+                    <p className="text-xs text-gray-500 mt-1">{user.university}</p>
+                  )}
                 </div>
               </div>
 
@@ -70,7 +89,7 @@ const MobileNav = () => {
                 ))}
               </nav>
 
-              <Button variant="outline" className="mt-auto w-full justify-start">
+              <Button variant="outline" className="mt-auto w-full justify-start" onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Sign Out
               </Button>

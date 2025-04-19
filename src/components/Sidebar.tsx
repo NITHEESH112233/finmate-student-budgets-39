@@ -8,12 +8,22 @@ import {
   BarChart,
   Wallet,
   Settings,
-  LogOut
+  LogOut,
+  User
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const Sidebar = () => {
-  // This would typically come from auth context in a real app
-  const user = { name: "Student User" };
+  // In a real app with proper auth context, this would come from context
+  const [user, setUser] = useState<any>(null);
+  
+  useEffect(() => {
+    // Get user data from localStorage
+    const userData = localStorage.getItem("finmateUser");
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, []);
 
   const navItems = [
     { icon: Home, label: "Dashboard", path: "/" },
@@ -22,8 +32,14 @@ const Sidebar = () => {
     { icon: Wallet, label: "Income", path: "/income" },
     { icon: BarChart, label: "Reports", path: "/reports" },
     { icon: Wallet, label: "Goals", path: "/goals" },
+    { icon: User, label: "Profile", path: "/profile" },
     { icon: Settings, label: "Settings", path: "/settings" },
   ];
+
+  const handleLogout = () => {
+    localStorage.removeItem("finmateUser");
+    window.location.href = "/auth";
+  };
 
   return (
     <div className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 p-4 h-screen sticky top-0">
@@ -37,7 +53,10 @@ const Sidebar = () => {
       <div className="mb-8">
         <div className="px-4 py-3 bg-finmate-light-purple rounded-lg">
           <p className="text-sm text-gray-600">Welcome</p>
-          <p className="font-medium">{user.name}</p>
+          <p className="font-medium">{user?.name || "Guest"}</p>
+          {user?.university && (
+            <p className="text-xs text-gray-500 mt-1">{user.university}</p>
+          )}
         </div>
       </div>
 
@@ -52,7 +71,7 @@ const Sidebar = () => {
         ))}
       </nav>
 
-      <Button variant="outline" className="mt-auto w-full justify-start">
+      <Button variant="outline" className="mt-auto w-full justify-start" onClick={handleLogout}>
         <LogOut className="mr-2 h-4 w-4" />
         Sign Out
       </Button>

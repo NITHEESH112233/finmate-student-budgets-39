@@ -1,4 +1,6 @@
 
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import MainLayout from "@/layouts/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -6,6 +8,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PieChart, BarChart, CreditCard, Wallet } from "lucide-react";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
+  
+  useEffect(() => {
+    // Check if user is authenticated
+    const userData = localStorage.getItem("finmateUser");
+    if (!userData) {
+      navigate("/auth");
+      return;
+    }
+    
+    setUser(JSON.parse(userData));
+  }, [navigate]);
+
   // Mock data - in a real app, this would come from API/backend
   const balanceSummary = {
     totalBalance: 1250.75,
@@ -37,11 +53,23 @@ const Dashboard = () => {
 
   const budgetProgress = 72; // percentage
 
+  if (!user) {
+    return null; // Will redirect to auth in useEffect
+  }
+
+  // Get current time of day for greeting
+  const getCurrentGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  };
+
   return (
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Welcome Back!</h1>
+          <h1 className="text-3xl font-bold">{getCurrentGreeting()}, {user.name.split(' ')[0]}!</h1>
           <p className="text-muted-foreground">Here's an overview of your finances</p>
         </div>
 
@@ -207,6 +235,41 @@ const Dashboard = () => {
 
           {/* Right side */}
           <div className="space-y-6">
+            {/* User Summary Card - New */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col items-center space-y-2 pb-4 border-b">
+                  <div className="w-16 h-16 rounded-full bg-finmate-light-purple flex items-center justify-center text-finmate-purple text-xl font-bold">
+                    {user.name.charAt(0)}
+                  </div>
+                  <h3 className="font-medium">{user.name}</h3>
+                  <p className="text-sm text-muted-foreground">{user.email}</p>
+                </div>
+                
+                <div className="space-y-2">
+                  {user.university && (
+                    <div className="flex justify-between text-sm">
+                      <span>University:</span>
+                      <span className="font-medium">{user.university}</span>
+                    </div>
+                  )}
+                  {user.studentId && (
+                    <div className="flex justify-between text-sm">
+                      <span>Student ID:</span>
+                      <span className="font-medium">{user.studentId}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span>Member Since:</span>
+                    <span className="font-medium">{new Date(user.joinedDate).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Savings Goals */}
             <Card>
               <CardHeader>
