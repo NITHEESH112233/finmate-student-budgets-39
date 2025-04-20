@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import MainLayout from "@/layouts/MainLayout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,13 +7,17 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { User, Settings, CreditCard, Bell } from "lucide-react";
+import { User, Settings, CreditCard, Bell, Image } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Profile = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  
   const [profileForm, setProfileForm] = useState({
     name: "",
     email: "",
@@ -43,6 +47,7 @@ const Profile = () => {
         university: parsedUser.university || "",
         studentId: parsedUser.studentId || "",
       });
+      setProfileImageUrl(parsedUser.profileImage || null);
     } else {
       navigate("/auth");
     }
@@ -59,12 +64,29 @@ const Profile = () => {
         email: profileForm.email,
         university: profileForm.university,
         studentId: profileForm.studentId,
+        profileImage: profileImageUrl,
       };
       
       localStorage.setItem("finmateUser", JSON.stringify(updatedUser));
       setUser(updatedUser);
       toast.success("Profile updated successfully");
     }
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setProfileImageUrl(base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
   };
 
   const handleLogout = () => {
@@ -128,8 +150,30 @@ const Profile = () => {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="flex flex-col sm:flex-row gap-4 items-center mb-6">
-                    <div className="w-24 h-24 rounded-full bg-finmate-light-purple flex items-center justify-center text-finmate-purple text-2xl font-bold">
-                      {profileForm.name.charAt(0)}
+                    <div className="relative">
+                      <Avatar className="w-24 h-24">
+                        <AvatarImage src={profileImageUrl || undefined} />
+                        <AvatarFallback className="bg-finmate-light-purple text-finmate-purple text-2xl font-bold">
+                          {profileForm.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleImageUpload}
+                        accept="image/*"
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 w-full"
+                        onClick={triggerFileInput}
+                      >
+                        <Image className="h-4 w-4 mr-2" />
+                        Upload Photo
+                      </Button>
                     </div>
                     <div>
                       <h3 className="font-medium">{profileForm.name}</h3>
@@ -137,9 +181,6 @@ const Profile = () => {
                       <p className="text-xs text-muted-foreground mt-1">
                         Joined {user ? new Date(user.joinedDate).toLocaleDateString() : ''}
                       </p>
-                      <Button variant="outline" size="sm" className="mt-2">
-                        Upload Photo
-                      </Button>
                     </div>
                   </div>
 

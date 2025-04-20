@@ -1,7 +1,6 @@
-
 import MainLayout from "@/layouts/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { fileChartLine, fileChartPie, fileChartColumn } from "lucide-react";
+import { LineChart, PieChart, BarChart } from "lucide-react";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -43,7 +42,7 @@ const Reports = () => {
                   <CardTitle className="text-sm font-medium">
                     Total Income
                   </CardTitle>
-                  <fileChartLine className="h-4 w-4 text-finmate-purple" />
+                  <LineChart className="h-4 w-4 text-finmate-purple" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">₹{mockData.income.toLocaleString()}</div>
@@ -58,7 +57,7 @@ const Reports = () => {
                   <CardTitle className="text-sm font-medium">
                     Total Expenses
                   </CardTitle>
-                  <fileChartColumn className="h-4 w-4 text-finmate-purple" />
+                  <BarChart className="h-4 w-4 text-finmate-purple" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">₹{mockData.expenses.toLocaleString()}</div>
@@ -73,7 +72,7 @@ const Reports = () => {
                   <CardTitle className="text-sm font-medium">
                     Total Savings
                   </CardTitle>
-                  <fileChartPie className="h-4 w-4 text-finmate-purple" />
+                  <PieChart className="h-4 w-4 text-finmate-purple" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">₹{mockData.savings.toLocaleString()}</div>
