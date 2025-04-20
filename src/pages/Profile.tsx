@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import MainLayout from "@/layouts/MainLayout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { User, Settings, CreditCard, Bell, Image } from "lucide-react";
+import { User, CreditCard, Bell, Image } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -33,8 +34,6 @@ const Profile = () => {
     transactionAlerts: true,
     tips: true,
   });
-
-  const [currency, setCurrency] = useState("INR (₹)");
 
   useEffect(() => {
     const userData = localStorage.getItem("finmateUser");
@@ -103,6 +102,10 @@ const Profile = () => {
     toast.success(`Notification preference updated`);
   };
 
+  const navigateToSettings = () => {
+    navigate("/settings");
+  };
+
   if (loading) {
     return (
       <MainLayout>
@@ -134,10 +137,6 @@ const Profile = () => {
             <TabsTrigger value="payment" className="flex items-center">
               <CreditCard className="mr-2 h-4 w-4" />
               Payment Methods
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center">
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
             </TabsTrigger>
           </TabsList>
 
@@ -232,6 +231,19 @@ const Profile = () => {
                     <h3 className="font-medium mb-4">Password</h3>
                     <Button variant="outline" type="button">
                       Change Password
+                    </Button>
+                  </div>
+
+                  <Separator />
+
+                  <div>
+                    <h3 className="font-medium mb-4">Application Settings</h3>
+                    <Button 
+                      variant="outline" 
+                      type="button"
+                      onClick={navigateToSettings}
+                    >
+                      Manage Settings
                     </Button>
                   </div>
                 </CardContent>
@@ -381,7 +393,7 @@ const Profile = () => {
                       </div>
                       <div>
                         <h3 className="font-medium">Student Checking Account</h3>
-                        <p className="text-sm text-muted-foreground">Balance: $1,250.75</p>
+                        <p className="text-sm text-muted-foreground">Balance: ₹1,250.75</p>
                       </div>
                     </div>
                     <Button variant="outline" size="sm">View Details</Button>
@@ -392,64 +404,6 @@ const Profile = () => {
                   <CreditCard className="h-4 w-4 mr-2" />
                   Connect a New Account
                 </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="settings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Application Settings</CardTitle>
-                <CardDescription>Manage app preferences and settings</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">Dark Mode</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Toggle dark mode for the application
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" className="sr-only peer" />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-finmate-purple rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-finmate-purple"></div>
-                    </label>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">Currency</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Select your preferred currency
-                      </p>
-                    </div>
-                    <select 
-                      className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                    >
-                      <option>INR (₹)</option>
-                      <option>USD ($)</option>
-                      <option>EUR (€)</option>
-                      <option>GBP (£)</option>
-                    </select>
-                  </div>
-
-                  <Separator />
-
-                  <div className="pt-4">
-                    <h3 className="font-medium text-red-500 mb-2">Danger Zone</h3>
-                    <div className="space-y-2">
-                      <Button variant="outline" className="border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 w-full">
-                        Export Data
-                      </Button>
-                      <Button variant="outline" className="border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 w-full">
-                        Delete Account
-                      </Button>
-                    </div>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
