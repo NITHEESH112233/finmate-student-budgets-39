@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import MainLayout from "@/layouts/MainLayout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +21,6 @@ const Profile = () => {
     studentId: "",
   });
 
-  // Notification preferences
   const [notifications, setNotifications] = useState({
     email: true,
     push: false,
@@ -32,8 +30,9 @@ const Profile = () => {
     tips: true,
   });
 
+  const [currency, setCurrency] = useState("INR (₹)");
+
   useEffect(() => {
-    // Get user data from localStorage
     const userData = localStorage.getItem("finmateUser");
     if (userData) {
       const parsedUser = JSON.parse(userData);
@@ -45,7 +44,6 @@ const Profile = () => {
         studentId: parsedUser.studentId || "",
       });
     } else {
-      // Redirect to login if no user data is found
       navigate("/auth");
     }
     setLoading(false);
@@ -54,7 +52,6 @@ const Profile = () => {
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Update user data in localStorage
     if (user) {
       const updatedUser = {
         ...user,
@@ -369,24 +366,32 @@ const Profile = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-medium">Dark Mode</h3>
-                      <p className="text-sm text-muted-foreground">Toggle dark mode for the application</p>
+                      <p className="text-sm text-muted-foreground">
+                        Toggle dark mode for the application
+                      </p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" className="sr-only peer" />
                       <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-finmate-purple rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-finmate-purple"></div>
                     </label>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-medium">Currency</h3>
-                      <p className="text-sm text-muted-foreground">Select your preferred currency</p>
+                      <p className="text-sm text-muted-foreground">
+                        Select your preferred currency
+                      </p>
                     </div>
-                    <select className="border border-gray-300 rounded-md px-2 py-1 text-sm">
+                    <select 
+                      className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                      value={currency}
+                      onChange={(e) => setCurrency(e.target.value)}
+                    >
+                      <option>INR (₹)</option>
                       <option>USD ($)</option>
                       <option>EUR (€)</option>
                       <option>GBP (£)</option>
-                      <option>JPY (¥)</option>
                     </select>
                   </div>
 
