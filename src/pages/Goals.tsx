@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Search } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,10 @@ const Goals = () => {
     targetDate: "",
   });
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterProgress, setFilterProgress] = useState("all");
+  const [sortBy, setSortBy] = useState("dueDate");
+
   const handleAddGoal = () => {
     if (!newGoal.name || !newGoal.targetAmount || !newGoal.targetDate) {
       return; // In a real app, show validation error
@@ -78,6 +83,52 @@ const Goals = () => {
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
+  };
+
+  const filteredAndSortedGoals = goals
+    .filter(goal => {
+      const matchesSearch = goal.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const progressPercentage = Math.round((goal.currentAmount / goal.targetAmount) * 100);
+      
+      if (filterProgress === "all") return matchesSearch;
+      if (filterProgress === "low") return matchesSearch && progressPercentage < 33;
+      if (filterProgress === "medium") return matchesSearch && progressPercentage >= 33 && progressPercentage < 66;
+      if (filterProgress === "high") return matchesSearch && progressPercentage >= 66;
+      
+      return matchesSearch;
+    })
+    .sort((a, b) => {
+      if (sortBy === "dueDate") {
+        return new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime();
+      }
+      if (sortBy === "progress") {
+        const progressA = (a.currentAmount / a.targetAmount) * 100;
+        const progressB = (b.currentAmount / b.targetAmount) * 100;
+        return progressB - progressA;
+      }
+      if (sortBy === "amount") {
+        return b.targetAmount - a.targetAmount;
+      }
+      return 0;
+    });
+
+  const handleAddFunds = (goalId: number) => {
+    const amount = prompt("Enter amount to add:");
+    if (!amount) return;
+
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) return;
+
+    setGoals(goals.map(goal => {
+      if (goal.id === goalId) {
+        const newAmount = goal.currentAmount + numAmount;
+        return {
+          ...goal,
+          currentAmount: Math.min(newAmount, goal.targetAmount)
+        };
+      }
+      return goal;
+    }));
   };
 
   return (
@@ -148,8 +199,43 @@ const Goals = () => {
           </Dialog>
         </div>
 
+        <div className="flex gap-4 items-center mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search goals..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          
+          <Select value={filterProgress} onValueChange={setFilterProgress}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by progress" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Progress</SelectItem>
+              <SelectItem value="low">Low Progress (0-33%)</SelectItem>
+              <SelectItem value="medium">Medium Progress (33-66%)</SelectItem>
+              <SelectItem value="high">High Progress (66-100%)</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dueDate">Due Date</SelectItem>
+              <SelectItem value="progress">Progress</SelectItem>
+              <SelectItem value="amount">Target Amount</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {goals.map((goal) => {
+          {filteredAndSortedGoals.map((goal) => {
             const progressPercentage = Math.round((goal.currentAmount / goal.targetAmount) * 100);
             const daysLeft = calculateDaysLeft(goal.targetDate);
 
@@ -185,7 +271,11 @@ const Goals = () => {
                       <div className="text-sm text-muted-foreground">
                         {daysLeft} days left
                       </div>
-                      <Button size="sm" variant="outline">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleAddFunds(goal.id)}
+                      >
                         Add Funds
                       </Button>
                     </div>
@@ -196,7 +286,7 @@ const Goals = () => {
           })}
         </div>
 
-        {goals.length === 0 && (
+        {filteredAndSortedGoals.length === 0 && (
           <Card className="p-8 text-center">
             <div className="space-y-2">
               <h3 className="font-medium">No savings goals yet</h3>
