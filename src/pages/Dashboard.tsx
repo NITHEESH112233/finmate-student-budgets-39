@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "@/layouts/MainLayout";
@@ -12,7 +11,6 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   
   useEffect(() => {
-    // Check if user is authenticated
     const userData = localStorage.getItem("finmateUser");
     if (!userData) {
       navigate("/auth");
@@ -22,7 +20,6 @@ const Dashboard = () => {
     setUser(JSON.parse(userData));
   }, [navigate]);
 
-  // Mock data - in a real app, this would come from API/backend
   const balanceSummary = {
     totalBalance: 1250.75,
     income: 850.00,
@@ -51,13 +48,12 @@ const Dashboard = () => {
     { id: 3, description: "Internet", amount: 45.00, dueDate: "May 2" },
   ];
 
-  const budgetProgress = 72; // percentage
+  const budgetProgress = 72;
 
   if (!user) {
-    return null; // Will redirect to auth in useEffect
+    return null;
   }
 
-  // Get current time of day for greeting
   const getCurrentGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
@@ -73,7 +69,6 @@ const Dashboard = () => {
           <p className="text-muted-foreground">Here's an overview of your finances</p>
         </div>
 
-        {/* Balance summary */}
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
@@ -82,7 +77,7 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${balanceSummary.totalBalance.toFixed(2)}</div>
+              <div className="text-2xl font-bold">₹{balanceSummary.totalBalance.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">Available funds</p>
             </CardContent>
           </Card>
@@ -95,7 +90,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                +${balanceSummary.income.toFixed(2)}
+                ₹{balanceSummary.income.toFixed(2)}
               </div>
               <p className="text-xs text-muted-foreground">This month</p>
             </CardContent>
@@ -109,7 +104,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-500">
-                -${balanceSummary.expenses.toFixed(2)}
+                ₹{balanceSummary.expenses.toFixed(2)}
               </div>
               <p className="text-xs text-muted-foreground">This month</p>
             </CardContent>
@@ -123,18 +118,15 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-finmate-purple">
-                ${balanceSummary.savings.toFixed(2)}
+                ₹{balanceSummary.savings.toFixed(2)}
               </div>
               <p className="text-xs text-muted-foreground">This month</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main content */}
         <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-          {/* Left side */}
           <div className="col-span-1 lg:col-span-2 space-y-6">
-            {/* Budget overview */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
@@ -149,11 +141,11 @@ const Dashboard = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <div>Monthly Budget</div>
-                    <div className="font-medium">${balanceSummary.income.toFixed(2)}</div>
+                    <div className="font-medium">₹{balanceSummary.income.toFixed(2)}</div>
                   </div>
                   <div className="flex justify-between text-sm">
                     <div>Spent</div>
-                    <div className="font-medium">${balanceSummary.expenses.toFixed(2)}</div>
+                    <div className="font-medium">₹{balanceSummary.expenses.toFixed(2)}</div>
                   </div>
                   <Progress value={budgetProgress} className="h-2" />
                   <div className="flex justify-between text-xs text-muted-foreground">
@@ -170,7 +162,7 @@ const Dashboard = () => {
                         <div className={`w-3 h-3 rounded-full ${category.color} mr-2`} />
                         <div className="flex-1 flex justify-between items-center">
                           <div className="text-sm">{category.name}</div>
-                          <div className="text-sm font-medium">${category.amount.toFixed(2)}</div>
+                          <div className="text-sm font-medium">₹{category.amount.toFixed(2)}</div>
                         </div>
                         <div className="ml-4 w-16 text-right text-xs text-muted-foreground">
                           {category.percentage}%
@@ -182,7 +174,6 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Recent Transactions */}
             <Tabs defaultValue="recent">
               <div className="flex justify-between items-center">
                 <TabsList>
@@ -202,7 +193,7 @@ const Dashboard = () => {
                             <p className="text-xs text-muted-foreground">{tx.date} · {tx.category}</p>
                           </div>
                           <div className={`font-medium ${tx.amount > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                            {tx.amount > 0 ? '+' : ''}{tx.amount.toFixed(2)}
+                            {tx.amount > 0 ? '₹' : '-₹'}{Math.abs(tx.amount).toFixed(2)}
                           </div>
                         </div>
                       ))}
@@ -222,7 +213,7 @@ const Dashboard = () => {
                             <p className="text-xs text-muted-foreground">Due: {bill.dueDate}</p>
                           </div>
                           <div className="font-medium text-red-500">
-                            -{bill.amount.toFixed(2)}
+                            ₹{bill.amount.toFixed(2)}
                           </div>
                         </div>
                       ))}
@@ -233,9 +224,7 @@ const Dashboard = () => {
             </Tabs>
           </div>
 
-          {/* Right side */}
           <div className="space-y-6">
-            {/* User Summary Card - New */}
             <Card>
               <CardHeader>
                 <CardTitle>Account Summary</CardTitle>
@@ -270,7 +259,6 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Savings Goals */}
             <Card>
               <CardHeader>
                 <CardTitle>Savings Goals</CardTitle>
@@ -283,8 +271,8 @@ const Dashboard = () => {
                   </div>
                   <Progress value={65} className="h-2" />
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>$650 saved</span>
-                    <span>$1000 goal</span>
+                    <span>₹650 saved</span>
+                    <span>₹1000 goal</span>
                   </div>
                 </div>
 
@@ -295,14 +283,13 @@ const Dashboard = () => {
                   </div>
                   <Progress value={30} className="h-2" />
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>$300 saved</span>
-                    <span>$1000 goal</span>
+                    <span>₹300 saved</span>
+                    <span>₹1000 goal</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Financial Tips */}
             <Card className="bg-finmate-light-purple border-none">
               <CardHeader className="pb-2">
                 <CardTitle>Financial Tip</CardTitle>
@@ -314,7 +301,6 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Quick Stats */}
             <Card>
               <CardHeader>
                 <CardTitle>This Month</CardTitle>

@@ -1,4 +1,3 @@
-
 import MainLayout from "@/layouts/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,6 @@ import {
 } from "@/components/ui/dialog";
 
 const Goals = () => {
-  // In a real app, these would come from an API
   const [goals, setGoals] = useState([
     {
       id: 1,
@@ -174,11 +172,11 @@ const Goals = () => {
                   <div className="flex justify-between text-sm">
                     <div className="space-y-1">
                       <p className="text-muted-foreground">Current</p>
-                      <p className="font-medium">${goal.currentAmount.toFixed(2)}</p>
+                      <p className="font-medium">₹{goal.currentAmount.toFixed(2)}</p>
                     </div>
                     <div className="space-y-1 text-right">
                       <p className="text-muted-foreground">Target</p>
-                      <p className="font-medium">${goal.targetAmount.toFixed(2)}</p>
+                      <p className="font-medium">₹{goal.targetAmount.toFixed(2)}</p>
                     </div>
                   </div>
 

@@ -1,4 +1,3 @@
-
 import MainLayout from "@/layouts/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +19,6 @@ import { PieChart, AlertCircle, PlusCircle } from "lucide-react";
 import { PieChart as RechartsChart, Pie, ResponsiveContainer, Cell, Tooltip, Legend } from "recharts";
 
 const Budget = () => {
-  // In a real app, these would come from a backend API
   const [monthlyIncome] = useState(850);
   
   const [budgetCategories, setBudgetCategories] = useState([
@@ -90,7 +88,6 @@ const Budget = () => {
     setTempBudgets({});
   };
   
-  // Prepare data for pie chart
   const pieData = budgetCategories.map(cat => ({
     name: cat.name,
     value: cat.budget,
@@ -175,13 +172,12 @@ const Budget = () => {
         </div>
         
         <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-          {/* Budget Overview */}
           <div className="col-span-1 lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Budget Overview</CardTitle>
                 <CardDescription>
-                  Monthly Income: ${monthlyIncome.toFixed(2)}
+                  Monthly Income: ₹{monthlyIncome.toFixed(2)}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -189,7 +185,7 @@ const Budget = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <div>Total Budgeted</div>
-                      <div className="font-medium">${totalBudgeted.toFixed(2)} of ${monthlyIncome.toFixed(2)}</div>
+                      <div className="font-medium">₹{totalBudgeted.toFixed(2)} of ₹{monthlyIncome.toFixed(2)}</div>
                     </div>
                     <Progress value={(totalBudgeted / monthlyIncome) * 100} className="h-2" />
                   </div>
@@ -197,7 +193,7 @@ const Budget = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <div>Total Spent</div>
-                      <div className="font-medium">${totalSpent.toFixed(2)} of ${totalBudgeted.toFixed(2)}</div>
+                      <div className="font-medium">₹{totalSpent.toFixed(2)} of ₹{totalBudgeted.toFixed(2)}</div>
                     </div>
                     <Progress value={(totalSpent / totalBudgeted) * 100} className="h-2" />
                   </div>
@@ -206,7 +202,7 @@ const Budget = () => {
                     <div className="bg-finmate-light-purple p-4 rounded-md flex items-center gap-3 text-sm">
                       <AlertCircle className="h-4 w-4 text-finmate-purple" />
                       <div>
-                        <p className="font-medium">You have ${unbudgeted.toFixed(2)} of unbudgeted income.</p>
+                        <p className="font-medium">You have ₹{unbudgeted.toFixed(2)} of unbudgeted income.</p>
                         <p className="text-muted-foreground">Consider allocating these funds to savings or other categories.</p>
                       </div>
                     </div>
@@ -235,7 +231,7 @@ const Budget = () => {
                           <span className="font-medium">{category.name}</span>
                         </div>
                         <div className="text-sm">
-                          <span className="font-medium">${category.spent.toFixed(2)}</span>
+                          <span className="font-medium">₹{category.spent.toFixed(2)}</span>
                           {' '}of{' '}
                           {editingBudgets ? (
                             <Input
@@ -247,7 +243,7 @@ const Budget = () => {
                               onChange={(e) => handleBudgetEdit(category.id, e.target.value)}
                             />
                           ) : (
-                            <span className="font-medium">${category.budget.toFixed(2)}</span>
+                            <span className="font-medium">₹{category.budget.toFixed(2)}</span>
                           )}
                         </div>
                       </div>
@@ -265,7 +261,6 @@ const Budget = () => {
             </Card>
           </div>
           
-          {/* Budget Chart */}
           <div>
             <Card className="h-[400px]">
               <CardHeader>
@@ -301,7 +296,6 @@ const Budget = () => {
               </CardContent>
             </Card>
             
-            {/* Budget Tips */}
             <Card className="mt-6">
               <CardHeader>
                 <CardTitle>Budgeting Tips</CardTitle>
