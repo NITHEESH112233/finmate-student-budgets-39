@@ -16,7 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { CreditCard, PlusCircle, Search, Wallet, ArrowUp, ArrowDown } from "lucide-react";
-import { useCurrency, formatCurrency } from "@/contexts/CurrencyContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { formatCurrency } from "@/utils/formatCurrency";
 
 const Transactions = () => {
   const [transactions, setTransactions] = useState([

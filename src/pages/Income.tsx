@@ -8,7 +8,8 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowUp, Plus } from "lucide-react";
-import { useCurrency, formatCurrency } from "@/contexts/CurrencyContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { formatCurrency } from "@/utils/formatCurrency";
 
 const Income = () => {
   const [incomes, setIncomes] = useState([
