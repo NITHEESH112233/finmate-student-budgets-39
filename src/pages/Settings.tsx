@@ -1,27 +1,40 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import MainLayout from "@/layouts/MainLayout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Settings as SettingsIcon } from "lucide-react";
+import { useCurrency, currencies } from "@/contexts/CurrencyContext";
 
 const Settings = () => {
-  const [currency, setCurrency] = useState("INR (₹)");
+  const { currency, setCurrency } = useCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState(currency.label);
   const [darkMode, setDarkMode] = useState(false);
 
+  useEffect(() => {
+    const saved = localStorage.getItem("finmateSettings");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.darkMode !== undefined) setDarkMode(parsed.darkMode);
+      } catch {}
+    }
+  }, []);
+
   const handleSaveSettings = () => {
-    // Save settings to local storage
-    localStorage.setItem("finmateSettings", JSON.stringify({
-      currency,
-      darkMode,
-    }));
+    setCurrency(currencies.find(cur => cur.label === selectedCurrency) || currencies[0]);
+    localStorage.setItem(
+      "finmateSettings",
+      JSON.stringify({
+        currency: selectedCurrency,
+        darkMode,
+      })
+    );
     toast.success("Settings saved successfully");
   };
 
   const handleExportData = () => {
-    // Prepare data for export
     const userData = localStorage.getItem("finmateUser");
     const transactions = localStorage.getItem("transactions");
     const budgets = localStorage.getItem("budgets");
@@ -34,7 +47,6 @@ const Settings = () => {
       goals: goals ? JSON.parse(goals) : [],
     };
     
-    // Create and download the file
     const dataStr = JSON.stringify(exportData, null, 2);
     const dataUri = "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
     const exportFileDefaultName = "finmate-data.json";
@@ -49,7 +61,6 @@ const Settings = () => {
 
   const handleDeleteAccount = () => {
     if (confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
-      // Clear all data
       localStorage.removeItem("finmateUser");
       localStorage.removeItem("transactions");
       localStorage.removeItem("budgets");
@@ -110,13 +121,14 @@ const Settings = () => {
                 </div>
                 <select 
                   className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
+                  value={selectedCurrency}
+                  onChange={(e) => setSelectedCurrency(e.target.value)}
                 >
-                  <option>INR (₹)</option>
-                  <option>USD ($)</option>
-                  <option>EUR (€)</option>
-                  <option>GBP (£)</option>
+                  {currencies.map(option => (
+                    <option key={option.code} value={option.label}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 

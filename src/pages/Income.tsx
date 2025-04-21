@@ -1,4 +1,3 @@
-
 import MainLayout from "@/layouts/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowUp, Plus } from "lucide-react";
+import { useCurrency, formatCurrency } from "@/contexts/CurrencyContext";
 
 const Income = () => {
   const [incomes, setIncomes] = useState([
@@ -23,6 +23,8 @@ const Income = () => {
     frequency: "Monthly",
     date: new Date().toISOString().split('T')[0]
   });
+
+  const { currency } = useCurrency();
 
   const handleAddIncome = () => {
     if (!newIncome.source || !newIncome.amount) {
@@ -147,7 +149,7 @@ const Income = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                ${totalMonthlyIncome.toFixed(2)}
+                {formatCurrency(totalMonthlyIncome, currency.code)}
               </div>
               <p className="text-sm text-muted-foreground">
                 Combined from all sources
@@ -174,7 +176,7 @@ const Income = () => {
                     </div>
                     <div className="text-right">
                       <div className="font-medium text-green-600">
-                        +${income.amount.toFixed(2)}
+                        +{formatCurrency(income.amount, currency.code)}
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {income.frequency}
@@ -182,7 +184,6 @@ const Income = () => {
                     </div>
                   </div>
                 ))}
-
                 {incomes.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     No income sources added yet.

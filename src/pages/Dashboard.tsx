@@ -5,10 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PieChart, BarChart, CreditCard, Wallet } from "lucide-react";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { formatCurrency } from "@/utils/formatCurrency";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  const { currency } = useCurrency();
   
   useEffect(() => {
     const userData = localStorage.getItem("finmateUser");
@@ -77,7 +80,7 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₹{balanceSummary.totalBalance.toFixed(2)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(balanceSummary.totalBalance, currency.code)}</div>
               <p className="text-xs text-muted-foreground">Available funds</p>
             </CardContent>
           </Card>
@@ -90,7 +93,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                ₹{balanceSummary.income.toFixed(2)}
+                {formatCurrency(balanceSummary.income, currency.code)}
               </div>
               <p className="text-xs text-muted-foreground">This month</p>
             </CardContent>
@@ -104,7 +107,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-500">
-                ₹{balanceSummary.expenses.toFixed(2)}
+                {formatCurrency(balanceSummary.expenses, currency.code)}
               </div>
               <p className="text-xs text-muted-foreground">This month</p>
             </CardContent>
@@ -118,7 +121,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-finmate-purple">
-                ₹{balanceSummary.savings.toFixed(2)}
+                {formatCurrency(balanceSummary.savings, currency.code)}
               </div>
               <p className="text-xs text-muted-foreground">This month</p>
             </CardContent>
@@ -141,11 +144,11 @@ const Dashboard = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <div>Monthly Budget</div>
-                    <div className="font-medium">₹{balanceSummary.income.toFixed(2)}</div>
+                    <div className="font-medium">{formatCurrency(balanceSummary.income, currency.code)}</div>
                   </div>
                   <div className="flex justify-between text-sm">
                     <div>Spent</div>
-                    <div className="font-medium">₹{balanceSummary.expenses.toFixed(2)}</div>
+                    <div className="font-medium">{formatCurrency(balanceSummary.expenses, currency.code)}</div>
                   </div>
                   <Progress value={budgetProgress} className="h-2" />
                   <div className="flex justify-between text-xs text-muted-foreground">
@@ -162,7 +165,7 @@ const Dashboard = () => {
                         <div className={`w-3 h-3 rounded-full ${category.color} mr-2`} />
                         <div className="flex-1 flex justify-between items-center">
                           <div className="text-sm">{category.name}</div>
-                          <div className="text-sm font-medium">₹{category.amount.toFixed(2)}</div>
+                          <div className="text-sm font-medium">{formatCurrency(category.amount, currency.code)}</div>
                         </div>
                         <div className="ml-4 w-16 text-right text-xs text-muted-foreground">
                           {category.percentage}%
@@ -193,7 +196,7 @@ const Dashboard = () => {
                             <p className="text-xs text-muted-foreground">{tx.date} · {tx.category}</p>
                           </div>
                           <div className={`font-medium ${tx.amount > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                            {tx.amount > 0 ? '₹' : '-₹'}{Math.abs(tx.amount).toFixed(2)}
+                            {tx.amount > 0 ? currency.symbol : `-${currency.symbol}`}{Math.abs(tx.amount).toFixed(2)}
                           </div>
                         </div>
                       ))}
@@ -213,7 +216,7 @@ const Dashboard = () => {
                             <p className="text-xs text-muted-foreground">Due: {bill.dueDate}</p>
                           </div>
                           <div className="font-medium text-red-500">
-                            ₹{bill.amount.toFixed(2)}
+                            {currency.symbol}{bill.amount.toFixed(2)}
                           </div>
                         </div>
                       ))}
@@ -271,8 +274,8 @@ const Dashboard = () => {
                   </div>
                   <Progress value={65} className="h-2" />
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>₹650 saved</span>
-                    <span>₹1000 goal</span>
+                    <span>{formatCurrency(650, currency.code)} saved</span>
+                    <span>{formatCurrency(1000, currency.code)} goal</span>
                   </div>
                 </div>
 
@@ -283,8 +286,8 @@ const Dashboard = () => {
                   </div>
                   <Progress value={30} className="h-2" />
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>₹300 saved</span>
-                    <span>₹1000 goal</span>
+                    <span>{formatCurrency(300, currency.code)} saved</span>
+                    <span>{formatCurrency(1000, currency.code)} goal</span>
                   </div>
                 </div>
               </CardContent>

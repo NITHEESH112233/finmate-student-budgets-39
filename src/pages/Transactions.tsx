@@ -1,4 +1,3 @@
-
 import MainLayout from "@/layouts/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,9 +16,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { CreditCard, PlusCircle, Search, Wallet, ArrowUp, ArrowDown } from "lucide-react";
+import { useCurrency, formatCurrency } from "@/contexts/CurrencyContext";
 
 const Transactions = () => {
-  // In a real app, these would be managed with proper state management
   const [transactions, setTransactions] = useState([
     { 
       id: 1, 
@@ -101,6 +100,8 @@ const Transactions = () => {
     "Food", "Transport", "Entertainment", "Groceries", "Bills", "Education", 
     "Shopping", "Health", "Income", "Other"
   ];
+  
+  const { currency } = useCurrency();
   
   const filteredTransactions = transactions.filter(tx => 
     tx.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -298,7 +299,7 @@ const Transactions = () => {
                         ) : (
                           <ArrowDown className="h-4 w-4 mr-1" />
                         )}
-                        ${Math.abs(tx.amount).toFixed(2)}
+                        {formatCurrency(Math.abs(tx.amount), currency.code)}
                       </div>
                     </td>
                   </tr>
@@ -325,7 +326,7 @@ const Transactions = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                ${transactions.filter(tx => tx.amount > 0).reduce((sum, tx) => sum + tx.amount, 0).toFixed(2)}
+                {formatCurrency(transactions.filter(tx => tx.amount > 0).reduce((sum, tx) => sum + tx.amount, 0), currency.code)}
               </div>
               <p className="text-xs text-muted-foreground">Total Income</p>
             </CardContent>
@@ -339,7 +340,7 @@ const Transactions = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-500">
-                ${Math.abs(transactions.filter(tx => tx.amount < 0).reduce((sum, tx) => sum + tx.amount, 0)).toFixed(2)}
+                {formatCurrency(Math.abs(transactions.filter(tx => tx.amount < 0).reduce((sum, tx) => sum + tx.amount, 0)), currency.code)}
               </div>
               <p className="text-xs text-muted-foreground">Total Expenses</p>
             </CardContent>
