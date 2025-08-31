@@ -7,53 +7,91 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PieChart, BarChart, CreditCard, Wallet } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatCurrency } from "@/utils/formatCurrency";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
+  const { user, profile, isLoading } = useAuth();
   const { currency } = useCurrency();
   
+  const [balanceSummary, setBalanceSummary] = useState({
+    totalBalance: 0,
+    income: 0,
+    expenses: 0,
+    savings: 0,
+  });
+
+  const [recentTransactions, setRecentTransactions] = useState([]);
+  const [goals, setGoals] = useState([]);
+  
   useEffect(() => {
-    const userData = localStorage.getItem("finmateUser");
-    if (!userData) {
+    if (!isLoading && !user) {
       navigate("/auth");
       return;
     }
     
-    setUser(JSON.parse(userData));
-  }, [navigate]);
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user, isLoading, navigate]);
 
-  const balanceSummary = {
-    totalBalance: 1250.75,
-    income: 850.00,
-    expenses: 623.45,
-    savings: 227.30,
+  const fetchDashboardData = async () => {
+    try {
+      // Fetch transactions
+      const { data: transactions } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(4);
+
+      setRecentTransactions(transactions || []);
+
+      // Calculate balance summary
+      const income = (transactions || [])
+        .filter(tx => tx.type === 'income')
+        .reduce((sum, tx) => sum + parseFloat(tx.amount.toString()), 0);
+      
+      const expenses = Math.abs((transactions || [])
+        .filter(tx => tx.type === 'expense')
+        .reduce((sum, tx) => sum + parseFloat(tx.amount.toString()), 0));
+
+      const savings = income - expenses;
+      const totalBalance = savings;
+
+      setBalanceSummary({
+        totalBalance,
+        income,
+        expenses,
+        savings: Math.max(0, savings)
+      });
+
+      // Fetch goals
+      const { data: goalsData } = await supabase
+        .from('goals')
+        .select('*')
+        .limit(2);
+
+      setGoals(goalsData || []);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    }
   };
 
-  const spendingCategories = [
-    { name: "Groceries", amount: 180.50, percentage: 29, color: "bg-finmate-green" },
-    { name: "Rent", amount: 250.00, percentage: 40, color: "bg-finmate-purple" },
-    { name: "Entertainment", amount: 82.95, percentage: 13, color: "bg-finmate-yellow" },
-    { name: "Transport", amount: 60.00, percentage: 10, color: "bg-finmate-orange" },
-    { name: "Other", amount: 50.00, percentage: 8, color: "bg-finmate-blue" },
-  ];
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-finmate-purple mx-auto mb-4"></div>
+            <p>Loading...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
-  const recentTransactions = [
-    { id: 1, description: "Grocery Store", amount: -45.23, date: "Apr 18", category: "Groceries" },
-    { id: 2, description: "Part-time Job", amount: 250.00, date: "Apr 15", category: "Income" },
-    { id: 3, description: "Coffee Shop", amount: -4.50, date: "Apr 14", category: "Food" },
-    { id: 4, description: "Bus Pass", amount: -30.00, date: "Apr 12", category: "Transport" },
-  ];
-
-  const upcomingBills = [
-    { id: 1, description: "Rent", amount: 250.00, dueDate: "Apr 30" },
-    { id: 2, description: "Phone Bill", amount: 35.00, dueDate: "Apr 25" },
-    { id: 3, description: "Internet", amount: 45.00, dueDate: "May 2" },
-  ];
-
-  const budgetProgress = 72;
-
-  if (!user) {
+  if (!user || !profile) {
     return null;
   }
 
@@ -68,7 +106,7 @@ const Dashboard = () => {
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">{getCurrentGreeting()}, {user.name.split(' ')[0]}!</h1>
+          <h1 className="text-3xl font-bold">{getCurrentGreeting()}, {profile.name.split(' ')[0]}!</h1>
           <p className="text-muted-foreground">Here's an overview of your finances</p>
         </div>
 
@@ -150,28 +188,19 @@ const Dashboard = () => {
                     <div>Spent</div>
                     <div className="font-medium">{formatCurrency(balanceSummary.expenses, currency.code)}</div>
                   </div>
+                  const budgetProgress = balanceSummary.income > 0 ? Math.round((balanceSummary.expenses / balanceSummary.income) * 100) : 0;
+                  
                   <Progress value={budgetProgress} className="h-2" />
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <div>{budgetProgress}% used</div>
-                    <div>28% remaining</div>
+                    <div>{100 - budgetProgress}% remaining</div>
                   </div>
                 </div>
 
                 <div className="mt-6">
-                  <h4 className="text-sm font-medium mb-3">Spending by Category</h4>
-                  <div className="space-y-4">
-                    {spendingCategories.map((category) => (
-                      <div key={category.name} className="flex items-center">
-                        <div className={`w-3 h-3 rounded-full ${category.color} mr-2`} />
-                        <div className="flex-1 flex justify-between items-center">
-                          <div className="text-sm">{category.name}</div>
-                          <div className="text-sm font-medium">{formatCurrency(category.amount, currency.code)}</div>
-                        </div>
-                        <div className="ml-4 w-16 text-right text-xs text-muted-foreground">
-                          {category.percentage}%
-                        </div>
-                      </div>
-                    ))}
+                  <h4 className="text-sm font-medium mb-3">Recent Activity</h4>
+                  <div className="text-sm text-muted-foreground">
+                    View detailed spending breakdown in the Budget section.
                   </div>
                 </div>
               </CardContent>
@@ -191,13 +220,16 @@ const Dashboard = () => {
                     <div className="space-y-4">
                       {recentTransactions.map((tx) => (
                         <div key={tx.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                          <div>
-                            <p className="font-medium">{tx.description}</p>
-                            <p className="text-xs text-muted-foreground">{tx.date} · {tx.category}</p>
-                          </div>
-                          <div className={`font-medium ${tx.amount > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                            {tx.amount > 0 ? currency.symbol : `-${currency.symbol}`}{Math.abs(tx.amount).toFixed(2)}
-                          </div>
+                    <div>
+                      <p className="font-medium">{tx.description}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(tx.date).toLocaleDateString()} · {tx.category}
+                      </p>
+                    </div>
+                    <div className={`font-medium ${parseFloat(tx.amount) > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                      {parseFloat(tx.amount) > 0 ? currency.symbol : `-${currency.symbol}`}
+                      {Math.abs(parseFloat(tx.amount)).toFixed(2)}
+                    </div>
                         </div>
                       ))}
                     </div>
@@ -208,18 +240,9 @@ const Dashboard = () => {
               <TabsContent value="upcoming" className="mt-4">
                 <Card>
                   <CardContent className="pt-6">
-                    <div className="space-y-4">
-                      {upcomingBills.map((bill) => (
-                        <div key={bill.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                          <div>
-                            <p className="font-medium">{bill.description}</p>
-                            <p className="text-xs text-muted-foreground">Due: {bill.dueDate}</p>
-                          </div>
-                          <div className="font-medium text-red-500">
-                            {currency.symbol}{bill.amount.toFixed(2)}
-                          </div>
-                        </div>
-                      ))}
+                    <div className="text-center py-4 text-muted-foreground">
+                      <p>No upcoming bills configured yet.</p>
+                      <p className="text-sm">Add recurring expenses in Settings.</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -235,28 +258,28 @@ const Dashboard = () => {
               <CardContent className="space-y-4">
                 <div className="flex flex-col items-center space-y-2 pb-4 border-b">
                   <div className="w-16 h-16 rounded-full bg-finmate-light-purple flex items-center justify-center text-finmate-purple text-xl font-bold">
-                    {user.name.charAt(0)}
+                    {profile.name.charAt(0)}
                   </div>
-                  <h3 className="font-medium">{user.name}</h3>
+                  <h3 className="font-medium">{profile.name}</h3>
                   <p className="text-sm text-muted-foreground">{user.email}</p>
                 </div>
                 
                 <div className="space-y-2">
-                  {user.university && (
+                  {profile.university && (
                     <div className="flex justify-between text-sm">
                       <span>University:</span>
-                      <span className="font-medium">{user.university}</span>
+                      <span className="font-medium">{profile.university}</span>
                     </div>
                   )}
-                  {user.studentId && (
+                  {profile.student_id && (
                     <div className="flex justify-between text-sm">
                       <span>Student ID:</span>
-                      <span className="font-medium">{user.studentId}</span>
+                      <span className="font-medium">{profile.student_id}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm">
                     <span>Member Since:</span>
-                    <span className="font-medium">{new Date(user.joinedDate).toLocaleDateString()}</span>
+                    <span className="font-medium">{new Date(profile.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
               </CardContent>
@@ -267,29 +290,31 @@ const Dashboard = () => {
                 <CardTitle>Savings Goals</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <h3 className="font-medium">New Laptop</h3>
-                    <span className="text-sm text-muted-foreground">65%</span>
+                {goals.map((goal, index) => (
+                  <div key={goal.id} className="space-y-2">
+                    <div className="flex justify-between">
+                      <h3 className="font-medium">{goal.name}</h3>
+                      <span className="text-sm text-muted-foreground">
+                        {Math.round((parseFloat(goal.current_amount) / parseFloat(goal.target_amount)) * 100)}%
+                      </span>
+                    </div>
+                    <Progress 
+                      value={(parseFloat(goal.current_amount) / parseFloat(goal.target_amount)) * 100} 
+                      className="h-2" 
+                    />
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>{formatCurrency(parseFloat(goal.current_amount), currency.code)} saved</span>
+                      <span>{formatCurrency(parseFloat(goal.target_amount), currency.code)} goal</span>
+                    </div>
                   </div>
-                  <Progress value={65} className="h-2" />
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>{formatCurrency(650, currency.code)} saved</span>
-                    <span>{formatCurrency(1000, currency.code)} goal</span>
+                ))}
+                
+                {goals.length === 0 && (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <p>No savings goals yet.</p>
+                    <p className="text-sm">Create your first goal to start saving!</p>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <h3 className="font-medium">Summer Trip</h3>
-                    <span className="text-sm text-muted-foreground">30%</span>
-                  </div>
-                  <Progress value={30} className="h-2" />
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>{formatCurrency(300, currency.code)} saved</span>
-                    <span>{formatCurrency(1000, currency.code)} goal</span>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 

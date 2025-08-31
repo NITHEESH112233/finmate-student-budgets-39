@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import MainLayout from "@/layouts/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,22 +16,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useState } from "react";
 import { PieChart, AlertCircle, PlusCircle } from "lucide-react";
 import { PieChart as RechartsChart, Pie, ResponsiveContainer, Cell, Tooltip, Legend } from "recharts";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const Budget = () => {
-  const [monthlyIncome] = useState(850);
-  
-  const [budgetCategories, setBudgetCategories] = useState([
-    { id: 1, name: "Rent", budget: 250, spent: 250, color: "#9b87f5" },
-    { id: 2, name: "Groceries", budget: 200, spent: 180.50, color: "#F2FCE2" },
-    { id: 3, name: "Transport", budget: 100, spent: 60, color: "#FEC6A1" },
-    { id: 4, name: "Entertainment", budget: 90, spent: 82.95, color: "#FEF7CD" },
-    { id: 5, name: "Utilities", budget: 80, spent: 65, color: "#D3E4FD" },
-    { id: 6, name: "Eating Out", budget: 60, spent: 45, color: "#FFDEE2" },
-    { id: 7, name: "Savings", budget: 70, spent: 70, color: "#E5DEFF" },
-  ]);
+  const navigate = useNavigate();
+  const { user, isLoading } = useAuth();
+  const [monthlyIncome, setMonthlyIncome] = useState(850);
+  const [budgetCategories, setBudgetCategories] = useState([]);
   
   const [newCategory, setNewCategory] = useState({
     name: "",
@@ -38,49 +35,136 @@ const Budget = () => {
   });
   
   const [editingBudgets, setEditingBudgets] = useState(false);
-  const [tempBudgets, setTempBudgets] = useState({});
-  
-  const totalBudgeted = budgetCategories.reduce((sum, cat) => sum + cat.budget, 0);
-  const totalSpent = budgetCategories.reduce((sum, cat) => sum + cat.spent, 0);
-  const unbudgeted = monthlyIncome - totalBudgeted;
-  
-  const handleAddCategory = () => {
-    if (!newCategory.name || !newCategory.budget) {
-      return; // In a real app, show validation error
+  const [tempBudgets, setTempBudgets] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate("/auth");
+      return;
     }
     
-    const category = {
-      id: budgetCategories.length + 1,
-      name: newCategory.name,
-      budget: parseFloat(newCategory.budget),
-      spent: 0,
-      color: newCategory.color
-    };
-    
-    setBudgetCategories([...budgetCategories, category]);
-    setNewCategory({
-      name: "",
-      budget: "",
-      color: "#9b87f5"
-    });
+    if (user) {
+      fetchBudgetCategories();
+      calculateMonthlyIncome();
+    }
+  }, [user, isLoading, navigate]);
+
+  const fetchBudgetCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('budget_categories')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        toast.error('Failed to fetch budget categories');
+        return;
+      }
+
+      setBudgetCategories(data || []);
+    } catch (error) {
+      toast.error('Failed to fetch budget categories');
+    }
+  };
+
+  const calculateMonthlyIncome = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('incomes')
+        .select('*');
+
+      if (error) return;
+
+      const total = (data || []).reduce((sum, income) => {
+        const amount = parseFloat(income.amount.toString());
+        switch (income.frequency) {
+          case "Weekly":
+            return sum + (amount * 4);
+          case "Bi-weekly":
+            return sum + (amount * 2);
+          case "Monthly":
+            return sum + amount;
+          case "Annually":
+            return sum + (amount / 12);
+          default:
+            return sum + amount;
+        }
+      }, 0);
+
+      setMonthlyIncome(total);
+    } catch (error) {
+      console.error('Failed to calculate monthly income');
+    }
   };
   
-  const handleBudgetEdit = (id, value) => {
+  
+  const totalBudgeted = budgetCategories.reduce((sum, cat) => sum + parseFloat(cat.budget || 0), 0);
+  const totalSpent = budgetCategories.reduce((sum, cat) => sum + parseFloat(cat.spent || 0), 0);
+  const unbudgeted = monthlyIncome - totalBudgeted;
+  
+  const handleAddCategory = async () => {
+    if (!newCategory.name || !newCategory.budget || !user) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('budget_categories')
+        .insert({
+          user_id: user.id,
+          name: newCategory.name,
+          budget: parseFloat(newCategory.budget),
+          color: newCategory.color
+        })
+        .select()
+        .single();
+
+      if (error) {
+        toast.error("Failed to add category");
+        return;
+      }
+
+      setBudgetCategories([...budgetCategories, data]);
+      setNewCategory({
+        name: "",
+        budget: "",
+        color: "#9b87f5"
+      });
+      toast.success("Category added successfully!");
+    } catch (error) {
+      toast.error("Failed to add category");
+    }
+  };
+  
+  const handleBudgetEdit = (id: string, value: string) => {
     setTempBudgets({
       ...tempBudgets,
       [id]: parseFloat(value)
     });
   };
   
-  const saveNewBudgets = () => {
-    const updated = budgetCategories.map(cat => ({
-      ...cat,
-      budget: tempBudgets[cat.id] !== undefined ? tempBudgets[cat.id] : cat.budget
-    }));
-    
-    setBudgetCategories(updated);
-    setEditingBudgets(false);
-    setTempBudgets({});
+  const saveNewBudgets = async () => {
+    try {
+      const updates = Object.entries(tempBudgets).map(([id, budget]) => ({
+        id,
+        budget: budget
+      }));
+
+      for (const update of updates) {
+        await supabase
+          .from('budget_categories')
+          .update({ budget: parseFloat(update.budget.toString()) })
+          .eq('id', update.id);
+      }
+
+      await fetchBudgetCategories();
+      setEditingBudgets(false);
+      setTempBudgets({});
+      toast.success("Budgets updated successfully!");
+    } catch (error) {
+      toast.error("Failed to update budgets");
+    }
   };
   
   const cancelEditing = () => {
@@ -90,16 +174,33 @@ const Budget = () => {
   
   const pieData = budgetCategories.map(cat => ({
     name: cat.name,
-    value: cat.budget,
+    value: parseFloat(cat.budget || 0),
     color: cat.color
   }));
-  
+
   if (unbudgeted > 0) {
     pieData.push({
       name: "Unbudgeted",
       value: unbudgeted,
       color: "#F1F0FB"
     });
+  }
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-finmate-purple mx-auto mb-4"></div>
+            <p>Loading...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!user) {
+    return null;
   }
   
   return (
@@ -231,7 +332,7 @@ const Budget = () => {
                           <span className="font-medium">{category.name}</span>
                         </div>
                         <div className="text-sm">
-                          <span className="font-medium">₹{category.spent.toFixed(2)}</span>
+                          <span className="font-medium">₹{parseFloat(category.spent || 0).toFixed(2)}</span>
                           {' '}of{' '}
                           {editingBudgets ? (
                             <Input
@@ -239,20 +340,20 @@ const Budget = () => {
                               type="number"
                               step="0.01"
                               min="0"
-                              defaultValue={category.budget}
+                              defaultValue={parseFloat(category.budget || 0)}
                               onChange={(e) => handleBudgetEdit(category.id, e.target.value)}
                             />
                           ) : (
-                            <span className="font-medium">₹{category.budget.toFixed(2)}</span>
+                            <span className="font-medium">₹{parseFloat(category.budget || 0).toFixed(2)}</span>
                           )}
                         </div>
                       </div>
                       <Progress 
-                        value={(category.spent / category.budget) * 100} 
+                        value={((parseFloat(category.spent || 0)) / (parseFloat(category.budget || 1))) * 100} 
                         className="h-2"
                       />
                       <div className="flex justify-end text-xs text-muted-foreground">
-                        {Math.round((category.spent / category.budget) * 100)}% used
+                        {Math.round(((parseFloat(category.spent || 0)) / (parseFloat(category.budget || 1))) * 100)}% used
                       </div>
                     </div>
                   ))}

@@ -4,19 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowUp, Plus } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatCurrency } from "@/utils/formatCurrency";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const Income = () => {
-  const [incomes, setIncomes] = useState([
-    { id: 1, source: "Part-time Job", amount: 800, frequency: "Monthly", date: "2025-04-01" },
-    { id: 2, source: "Freelancing", amount: 500, frequency: "Monthly", date: "2025-04-15" },
-    { id: 3, source: "Tutoring", amount: 200, frequency: "Weekly", date: "2025-04-10" },
-  ]);
+  const navigate = useNavigate();
+  const { user, isLoading } = useAuth();
+  const [incomes, setIncomes] = useState([]);
 
   const [newIncome, setNewIncome] = useState({
     source: "",
@@ -27,32 +28,74 @@ const Income = () => {
 
   const { currency } = useCurrency();
 
-  const handleAddIncome = () => {
-    if (!newIncome.source || !newIncome.amount) {
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate("/auth");
+      return;
+    }
+    
+    if (user) {
+      fetchIncomes();
+    }
+  }, [user, isLoading, navigate]);
+
+  const fetchIncomes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('incomes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        toast.error('Failed to fetch incomes');
+        return;
+      }
+
+      setIncomes(data || []);
+    } catch (error) {
+      toast.error('Failed to fetch incomes');
+    }
+  };
+
+  const handleAddIncome = async () => {
+    if (!newIncome.source || !newIncome.amount || !user) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    const income = {
-      id: incomes.length + 1,
-      source: newIncome.source,
-      amount: parseFloat(newIncome.amount),
-      frequency: newIncome.frequency,
-      date: newIncome.date
-    };
+    try {
+      const { data, error } = await supabase
+        .from('incomes')
+        .insert({
+          user_id: user.id,
+          source: newIncome.source,
+          amount: parseFloat(newIncome.amount),
+          frequency: newIncome.frequency,
+          date: newIncome.date
+        })
+        .select()
+        .single();
 
-    setIncomes([income, ...incomes]);
-    setNewIncome({
-      source: "",
-      amount: "",
-      frequency: "Monthly",
-      date: new Date().toISOString().split('T')[0]
-    });
-    toast.success("Income added successfully!");
+      if (error) {
+        toast.error("Failed to add income");
+        return;
+      }
+
+      setIncomes([data, ...incomes]);
+      setNewIncome({
+        source: "",
+        amount: "",
+        frequency: "Monthly",
+        date: new Date().toISOString().split('T')[0]
+      });
+      toast.success("Income added successfully!");
+    } catch (error) {
+      toast.error("Failed to add income");
+    }
   };
 
   const totalMonthlyIncome = incomes.reduce((sum, income) => {
-    const amount = income.amount;
+    const amount = parseFloat(income.amount);
     switch (income.frequency) {
       case "Weekly":
         return sum + (amount * 4);
@@ -66,6 +109,23 @@ const Income = () => {
         return sum + amount;
     }
   }, 0);
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-finmate-purple mx-auto mb-4"></div>
+            <p>Loading...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <MainLayout>
@@ -177,7 +237,7 @@ const Income = () => {
                     </div>
                     <div className="text-right">
                       <div className="font-medium text-green-600">
-                        +{formatCurrency(income.amount, currency.code)}
+                        +{formatCurrency(parseFloat(income.amount), currency.code)}
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {income.frequency}

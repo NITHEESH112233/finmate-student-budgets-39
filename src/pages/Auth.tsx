@@ -1,255 +1,217 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, ArrowRight } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
+  const { login, register, user, isLoading } = useAuth();
   
-  // Login form state
   const [loginForm, setLoginForm] = useState({
     email: "",
-    password: "",
+    password: ""
   });
-
-  // Register form state
+  
   const [registerForm, setRegisterForm] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
-    studentId: "",
     university: "",
+    studentId: ""
   });
 
-  // Handle login form submission
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Mock login - in a real app, this would verify with backend
-    if (loginForm.email && loginForm.password) {
-      toast.success("Login successful!");
-      
-      // Store mock user data in localStorage for demonstration
-      const userData = {
-        id: "user-123",
-        name: "Student User",
-        email: loginForm.email,
-        university: "State University",
-        studentId: "SU20240419",
-        joinedDate: new Date().toISOString(),
-        profileImage: null
-      };
-      
-      localStorage.setItem("finmateUser", JSON.stringify(userData));
-      navigate("/");
+    if (!loginForm.email || !loginForm.password) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    const { error } = await login(loginForm.email, loginForm.password);
+    
+    if (error) {
+      toast.error(error);
     } else {
-      toast.error("Please enter both email and password");
+      toast.success("Welcome back!");
+      navigate("/dashboard");
     }
   };
 
-  // Handle register form submission
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Simple validation
     if (!registerForm.name || !registerForm.email || !registerForm.password) {
-      toast.error("Please fill out all required fields");
+      toast.error("Please fill in all required fields");
       return;
     }
     
     if (registerForm.password !== registerForm.confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error("Passwords don't match");
       return;
     }
     
-    // Mock registration - store user data
-    const userData = {
-      id: "user-" + Math.floor(Math.random() * 1000),
-      name: registerForm.name,
-      email: registerForm.email,
-      university: registerForm.university || "Not specified",
-      studentId: registerForm.studentId || "Not specified",
-      joinedDate: new Date().toISOString(),
-      profileImage: null
-    };
+    if (registerForm.password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    const { error } = await register(
+      registerForm.email, 
+      registerForm.password, 
+      registerForm.name,
+      registerForm.university || undefined,
+      registerForm.studentId || undefined
+    );
     
-    localStorage.setItem("finmateUser", JSON.stringify(userData));
-    toast.success("Registration successful! Welcome to FinMate!");
-    navigate("/");
+    if (error) {
+      toast.error(error);
+    } else {
+      toast.success("Account created successfully! Please check your email to verify your account.");
+    }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="mx-auto w-12 h-12 rounded-full bg-finmate-purple flex items-center justify-center text-white font-bold mb-4">
-            F
-          </div>
-          <h1 className="text-2xl font-bold">FinMate</h1>
-          <p className="text-muted-foreground">Financial Management for Students</p>
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-finmate-purple mx-auto mb-4"></div>
+          <p>Loading...</p>
         </div>
-        
-        <Tabs defaultValue="login" className="w-full">
-          <TabsList className="grid grid-cols-2 mb-4">
-            <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="register">Register</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="login">
-            <Card>
-              <form onSubmit={handleLogin}>
-                <CardHeader>
-                  <CardTitle>Welcome back</CardTitle>
-                  <CardDescription>
-                    Enter your credentials to access your account
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input 
-                      id="email" 
-                      type="email" 
-                      placeholder="student@example.com" 
-                      value={loginForm.email}
-                      onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <Label htmlFor="password">Password</Label>
-                      <a href="#" className="text-xs text-finmate-purple hover:underline">
-                        Forgot password?
-                      </a>
-                    </div>
-                    <div className="relative">
-                      <Input 
-                        id="password" 
-                        type={showPassword ? "text" : "password"} 
-                        placeholder="••••••••" 
-                        value={loginForm.password}
-                        onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
-                      />
-                      <button 
-                        type="button"
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="w-full bg-finmate-purple hover:bg-finmate-dark-purple">
-                    Login <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </CardFooter>
-              </form>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="register">
-            <Card>
-              <form onSubmit={handleRegister}>
-                <CardHeader>
-                  <CardTitle>Create an account</CardTitle>
-                  <CardDescription>
-                    Enter your details to create your FinMate account
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input 
-                      id="name" 
-                      placeholder="John Smith" 
-                      value={registerForm.name}
-                      onChange={(e) => setRegisterForm({...registerForm, name: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-email">Email</Label>
-                    <Input 
-                      id="register-email" 
-                      type="email" 
-                      placeholder="student@example.com" 
-                      value={registerForm.email}
-                      onChange={(e) => setRegisterForm({...registerForm, email: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="register-password">Password</Label>
-                      <div className="relative">
-                        <Input 
-                          id="register-password" 
-                          type={showPassword ? "text" : "password"} 
-                          placeholder="••••••••" 
-                          value={registerForm.password}
-                          onChange={(e) => setRegisterForm({...registerForm, password: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirm-password">Confirm Password</Label>
-                      <Input 
-                        id="confirm-password" 
-                        type={showPassword ? "text" : "password"} 
-                        placeholder="••••••••" 
-                        value={registerForm.confirmPassword}
-                        onChange={(e) => setRegisterForm({...registerForm, confirmPassword: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="university">University/College (Optional)</Label>
-                    <Input 
-                      id="university" 
-                      placeholder="State University" 
-                      value={registerForm.university}
-                      onChange={(e) => setRegisterForm({...registerForm, university: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="student-id">Student ID (Optional)</Label>
-                    <Input 
-                      id="student-id" 
-                      placeholder="SU12345" 
-                      value={registerForm.studentId}
-                      onChange={(e) => setRegisterForm({...registerForm, studentId: e.target.value})}
-                    />
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input 
-                      type="checkbox" 
-                      id="terms" 
-                      className="rounded border-gray-300 text-finmate-purple focus:ring-finmate-purple"
-                      required
-                    />
-                    <label htmlFor="terms" className="text-sm text-gray-600">
-                      I agree to the <a href="#" className="text-finmate-purple hover:underline">Terms of Service</a> and <a href="#" className="text-finmate-purple hover:underline">Privacy Policy</a>
-                    </label>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="w-full bg-finmate-purple hover:bg-finmate-dark-purple">
-                    Create Account
-                  </Button>
-                </CardFooter>
-              </form>
-            </Card>
-          </TabsContent>
-        </Tabs>
       </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-finmate-light-purple to-white p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold text-finmate-purple">Welcome to FinMate</CardTitle>
+          <CardDescription>Your personal finance companion for students</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="login" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="register">Sign Up</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="login">
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="login-email">Email</Label>
+                  <Input
+                    id="login-email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={loginForm.email}
+                    onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="login-password">Password</Label>
+                  <Input
+                    id="login-password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={loginForm.password}
+                    onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full bg-finmate-purple hover:bg-finmate-dark-purple">
+                  Sign In
+                </Button>
+              </form>
+            </TabsContent>
+            
+            <TabsContent value="register">
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="register-name">Full Name *</Label>
+                  <Input
+                    id="register-name"
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={registerForm.name}
+                    onChange={(e) => setRegisterForm({...registerForm, name: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-email">Email *</Label>
+                  <Input
+                    id="register-email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={registerForm.email}
+                    onChange={(e) => setRegisterForm({...registerForm, email: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-university">University</Label>
+                  <Input
+                    id="register-university"
+                    type="text"
+                    placeholder="Enter your university (optional)"
+                    value={registerForm.university}
+                    onChange={(e) => setRegisterForm({...registerForm, university: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-student-id">Student ID</Label>
+                  <Input
+                    id="register-student-id"
+                    type="text"
+                    placeholder="Enter your student ID (optional)"
+                    value={registerForm.studentId}
+                    onChange={(e) => setRegisterForm({...registerForm, studentId: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-password">Password *</Label>
+                  <Input
+                    id="register-password"
+                    type="password"
+                    placeholder="Create a password (min 6 characters)"
+                    value={registerForm.password}
+                    onChange={(e) => setRegisterForm({...registerForm, password: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-confirm-password">Confirm Password *</Label>
+                  <Input
+                    id="register-confirm-password"
+                    type="password"
+                    placeholder="Confirm your password"
+                    value={registerForm.confirmPassword}
+                    onChange={(e) => setRegisterForm({...registerForm, confirmPassword: e.target.value})}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full bg-finmate-purple hover:bg-finmate-dark-purple">
+                  Create Account
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 };
