@@ -102,13 +102,21 @@ const Dashboard = () => {
 
       setRecentTransactions(transactions || []);
 
+      // Fetch goals first
+      const { data: goalsData } = await supabase
+        .from('goals')
+        .select('*')
+        .limit(2);
+
+      setGoals(goalsData || []);
+
       // Fetch income data from incomes table
       const { data: incomes } = await supabase
         .from('incomes')
         .select('*');
 
-      // Calculate total monthly income from incomes table
-      const monthlyIncome = (incomes || []).reduce((sum, income) => {
+      // Calculate base monthly income from incomes table
+      const baseMonthlyIncome = (incomes || []).reduce((sum, income) => {
         const amount = parseFloat(income.amount.toString());
         switch (income.frequency) {
           case "Weekly":
@@ -124,27 +132,26 @@ const Dashboard = () => {
         }
       }, 0);
       
-      const expenses = Math.abs((transactions || [])
+      // Calculate total expenses from transactions
+      const totalExpenses = Math.abs((transactions || [])
         .filter(tx => tx.type === 'expense')
         .reduce((sum, tx) => sum + parseFloat(tx.amount.toString()), 0));
 
-      const savings = monthlyIncome - expenses;
-      const totalBalance = savings;
+      // Calculate total goal contributions (money added to goals)
+      const totalGoalContributions = (goalsData || []).reduce((sum, goal) => {
+        return sum + parseFloat(goal.current_amount.toString());
+      }, 0);
+
+      // Calculate available income (base income - expenses - goal contributions)
+      const availableIncome = baseMonthlyIncome - totalExpenses - totalGoalContributions;
+      const savings = Math.max(0, availableIncome);
 
       setBalanceSummary({
-        totalBalance,
-        income: monthlyIncome,
-        expenses,
-        savings: Math.max(0, savings)
+        totalBalance: savings,
+        income: availableIncome,
+        expenses: totalExpenses,
+        savings
       });
-
-      // Fetch goals
-      const { data: goalsData } = await supabase
-        .from('goals')
-        .select('*')
-        .limit(2);
-
-      setGoals(goalsData || []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     }
