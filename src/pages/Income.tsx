@@ -36,6 +36,27 @@ const Income = () => {
     
     if (user) {
       fetchIncomes();
+      
+      // Set up real-time subscription
+      const channel = supabase
+        .channel('incomes-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'incomes',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            fetchIncomes();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user, isLoading, navigate]);
 

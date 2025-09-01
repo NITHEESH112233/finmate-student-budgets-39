@@ -33,6 +33,61 @@ const Dashboard = () => {
     
     if (user) {
       fetchDashboardData();
+      
+      // Set up real-time subscriptions
+      const incomesChannel = supabase
+        .channel('incomes-dashboard')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'incomes',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            fetchDashboardData();
+          }
+        )
+        .subscribe();
+
+      const transactionsChannel = supabase
+        .channel('transactions-dashboard')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'transactions',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            fetchDashboardData();
+          }
+        )
+        .subscribe();
+
+      const goalsChannel = supabase
+        .channel('goals-dashboard')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'goals',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            fetchDashboardData();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(incomesChannel);
+        supabase.removeChannel(transactionsChannel);
+        supabase.removeChannel(goalsChannel);
+      };
     }
   }, [user, isLoading, navigate]);
 
@@ -47,21 +102,38 @@ const Dashboard = () => {
 
       setRecentTransactions(transactions || []);
 
-      // Calculate balance summary
-      const income = (transactions || [])
-        .filter(tx => tx.type === 'income')
-        .reduce((sum, tx) => sum + parseFloat(tx.amount.toString()), 0);
+      // Fetch income data from incomes table
+      const { data: incomes } = await supabase
+        .from('incomes')
+        .select('*');
+
+      // Calculate total monthly income from incomes table
+      const monthlyIncome = (incomes || []).reduce((sum, income) => {
+        const amount = parseFloat(income.amount.toString());
+        switch (income.frequency) {
+          case "Weekly":
+            return sum + (amount * 4);
+          case "Bi-weekly":
+            return sum + (amount * 2);
+          case "Monthly":
+            return sum + amount;
+          case "Annually":
+            return sum + (amount / 12);
+          default:
+            return sum + amount;
+        }
+      }, 0);
       
       const expenses = Math.abs((transactions || [])
         .filter(tx => tx.type === 'expense')
         .reduce((sum, tx) => sum + parseFloat(tx.amount.toString()), 0));
 
-      const savings = income - expenses;
+      const savings = monthlyIncome - expenses;
       const totalBalance = savings;
 
       setBalanceSummary({
         totalBalance,
-        income,
+        income: monthlyIncome,
         expenses,
         savings: Math.max(0, savings)
       });
