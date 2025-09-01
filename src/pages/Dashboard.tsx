@@ -188,12 +188,10 @@ const Dashboard = () => {
                     <div>Spent</div>
                     <div className="font-medium">{formatCurrency(balanceSummary.expenses, currency.code)}</div>
                   </div>
-                  const budgetProgress = balanceSummary.income > 0 ? Math.round((balanceSummary.expenses / balanceSummary.income) * 100) : 0;
-                  
-                  <Progress value={budgetProgress} className="h-2" />
+                  <Progress value={balanceSummary.income > 0 ? Math.round((balanceSummary.expenses / balanceSummary.income) * 100) : 0} className="h-2" />
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <div>{budgetProgress}% used</div>
-                    <div>{100 - budgetProgress}% remaining</div>
+                    <div>{balanceSummary.income > 0 ? Math.round((balanceSummary.expenses / balanceSummary.income) * 100) : 0}% used</div>
+                    <div>{balanceSummary.income > 0 ? 100 - Math.round((balanceSummary.expenses / balanceSummary.income) * 100) : 100}% remaining</div>
                   </div>
                 </div>
 
