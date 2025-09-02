@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PlusCircle, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -15,32 +15,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Goals = () => {
-  const [goals, setGoals] = useState([
-    {
-      id: 1,
-      name: "New Laptop",
-      currentAmount: 650,
-      targetAmount: 1000,
-      targetDate: "2025-09-01",
-    },
-    {
-      id: 2,
-      name: "Summer Trip",
-      currentAmount: 300,
-      targetAmount: 1000,
-      targetDate: "2025-07-15",
-    },
-    {
-      id: 3,
-      name: "Emergency Fund",
-      currentAmount: 450,
-      targetAmount: 1500,
-      targetDate: "2025-12-31",
-    },
-  ]);
-
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [goals, setGoals] = useState([]);
   const [newGoal, setNewGoal] = useState({
     name: "",
     targetAmount: "",
@@ -50,26 +32,79 @@ const Goals = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterProgress, setFilterProgress] = useState("all");
   const [sortBy, setSortBy] = useState("dueDate");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const handleAddGoal = () => {
-    if (!newGoal.name || !newGoal.targetAmount || !newGoal.targetDate) {
-      return; // In a real app, show validation error
+  useEffect(() => {
+    if (user) {
+      fetchGoals();
+    }
+  }, [user]);
+
+  const fetchGoals = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('goals')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setGoals(data || []);
+    } catch (error) {
+      console.error('Error fetching goals:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch goals",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddGoal = async () => {
+    if (!newGoal.name || !newGoal.targetAmount || !newGoal.targetDate || !user) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
     }
 
-    const goal = {
-      id: goals.length + 1,
-      name: newGoal.name,
-      currentAmount: 0,
-      targetAmount: parseFloat(newGoal.targetAmount),
-      targetDate: newGoal.targetDate,
-    };
+    try {
+      const { error } = await supabase
+        .from('goals')
+        .insert([
+          {
+            name: newGoal.name,
+            current_amount: 0,
+            target_amount: parseFloat(newGoal.targetAmount),
+            target_date: newGoal.targetDate,
+            user_id: user.id
+          }
+        ]);
 
-    setGoals([...goals, goal]);
-    setNewGoal({
-      name: "",
-      targetAmount: "",
-      targetDate: "",
-    });
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Goal added successfully"
+      });
+
+      setNewGoal({
+        name: "",
+        targetAmount: "",
+        targetDate: "",
+      });
+      
+      setIsDialogOpen(false);
+      fetchGoals();
+    } catch (error) {
+      console.error('Error adding goal:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add goal",
+        variant: "destructive"
+      });
+    }
   };
 
   const calculateDaysLeft = (dateStr: string) => {
@@ -88,7 +123,7 @@ const Goals = () => {
   const filteredAndSortedGoals = goals
     .filter(goal => {
       const matchesSearch = goal.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const progressPercentage = Math.round((goal.currentAmount / goal.targetAmount) * 100);
+      const progressPercentage = Math.round((parseFloat(goal.current_amount || '0') / parseFloat(goal.target_amount || '1')) * 100);
       
       if (filterProgress === "all") return matchesSearch;
       if (filterProgress === "low") return matchesSearch && progressPercentage < 33;
@@ -99,36 +134,53 @@ const Goals = () => {
     })
     .sort((a, b) => {
       if (sortBy === "dueDate") {
-        return new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime();
+        return new Date(a.target_date).getTime() - new Date(b.target_date).getTime();
       }
       if (sortBy === "progress") {
-        const progressA = (a.currentAmount / a.targetAmount) * 100;
-        const progressB = (b.currentAmount / b.targetAmount) * 100;
+        const progressA = (parseFloat(a.current_amount || '0') / parseFloat(a.target_amount || '1')) * 100;
+        const progressB = (parseFloat(b.current_amount || '0') / parseFloat(b.target_amount || '1')) * 100;
         return progressB - progressA;
       }
       if (sortBy === "amount") {
-        return b.targetAmount - a.targetAmount;
+        return parseFloat(b.target_amount || '0') - parseFloat(a.target_amount || '0');
       }
       return 0;
     });
 
-  const handleAddFunds = (goalId: number) => {
+  const handleAddFunds = async (goalId: string) => {
     const amount = prompt("Enter amount to add:");
     if (!amount) return;
 
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) return;
 
-    setGoals(goals.map(goal => {
-      if (goal.id === goalId) {
-        const newAmount = goal.currentAmount + numAmount;
-        return {
-          ...goal,
-          currentAmount: Math.min(newAmount, goal.targetAmount)
-        };
-      }
-      return goal;
-    }));
+    try {
+      const goal = goals.find(g => g.id === goalId);
+      if (!goal) return;
+
+      const newAmount = Math.min(goal.current_amount + numAmount, goal.target_amount);
+      
+      const { error } = await supabase
+        .from('goals')
+        .update({ current_amount: newAmount })
+        .eq('id', goalId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Added ${numAmount.toFixed(2)} to ${goal.name}`
+      });
+
+      fetchGoals();
+    } catch (error) {
+      console.error('Error adding funds:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add funds to goal",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -140,7 +192,7 @@ const Goals = () => {
             <p className="text-muted-foreground">Track progress towards financial targets</p>
           </div>
 
-          <Dialog>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-finmate-purple hover:bg-finmate-dark-purple">
                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -236,8 +288,8 @@ const Goals = () => {
 
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {filteredAndSortedGoals.map((goal) => {
-            const progressPercentage = Math.round((goal.currentAmount / goal.targetAmount) * 100);
-            const daysLeft = calculateDaysLeft(goal.targetDate);
+            const progressPercentage = Math.round((goal.current_amount / goal.target_amount) * 100);
+            const daysLeft = calculateDaysLeft(goal.target_date);
 
             return (
               <Card key={goal.id}>
@@ -249,7 +301,7 @@ const Goals = () => {
                     </div>
                   </div>
                   <CardDescription>
-                    Due by {formatDate(goal.targetDate)}
+                    Due by {formatDate(goal.target_date)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -258,11 +310,11 @@ const Goals = () => {
                   <div className="flex justify-between text-sm">
                     <div className="space-y-1">
                       <p className="text-muted-foreground">Current</p>
-                      <p className="font-medium">₹{goal.currentAmount.toFixed(2)}</p>
+                      <p className="font-medium">₹{parseFloat(goal.current_amount || 0).toFixed(2)}</p>
                     </div>
                     <div className="space-y-1 text-right">
                       <p className="text-muted-foreground">Target</p>
-                      <p className="font-medium">₹{goal.targetAmount.toFixed(2)}</p>
+                      <p className="font-medium">₹{parseFloat(goal.target_amount || 0).toFixed(2)}</p>
                     </div>
                   </div>
 

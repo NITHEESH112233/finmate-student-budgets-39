@@ -104,8 +104,12 @@ const Transactions = () => {
     
     try {
       const amount = parseFloat(newTransaction.amount);
+      const user = (await supabase.auth.getUser()).data.user;
       
-      const { error } = await supabase
+      if (!user) throw new Error("User not authenticated");
+      
+      // Insert transaction
+      const { error: transactionError } = await supabase
         .from('transactions')
         .insert([
           {
@@ -114,11 +118,37 @@ const Transactions = () => {
             date: newTransaction.date,
             category: newTransaction.category,
             type: newTransaction.type,
-            user_id: (await supabase.auth.getUser()).data.user?.id
+            user_id: user.id
           }
         ]);
 
-      if (error) throw error;
+      if (transactionError) throw transactionError;
+
+      // If it's an expense, update budget category spent amount
+      if (newTransaction.type === 'expense') {
+        const { data: budgetCategory, error: fetchError } = await supabase
+          .from('budget_categories')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('name', newTransaction.category)
+          .single();
+
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          console.warn('Could not find budget category:', fetchError);
+        } else if (budgetCategory) {
+          // Update spent amount
+          const newSpentAmount = (typeof budgetCategory.spent === 'string' ? parseFloat(budgetCategory.spent || '0') : Number(budgetCategory.spent || 0)) + amount;
+          
+          const { error: updateError } = await supabase
+            .from('budget_categories')
+            .update({ spent: newSpentAmount })
+            .eq('id', budgetCategory.id);
+
+          if (updateError) {
+            console.warn('Could not update budget category:', updateError);
+          }
+        }
+      }
 
       toast({
         title: "Success",
