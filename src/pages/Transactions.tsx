@@ -14,78 +14,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CreditCard, PlusCircle, Search, Wallet, ArrowUp, ArrowDown } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatCurrency } from "@/utils/formatCurrency";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Transactions = () => {
-  const [transactions, setTransactions] = useState([
-    { 
-      id: 1, 
-      description: "Grocery Store", 
-      amount: -45.23, 
-      date: "2025-04-18", 
-      category: "Groceries",
-      type: "expense" 
-    },
-    { 
-      id: 2, 
-      description: "Part-time Job", 
-      amount: 250.00, 
-      date: "2025-04-15", 
-      category: "Income",
-      type: "income" 
-    },
-    { 
-      id: 3, 
-      description: "Coffee Shop", 
-      amount: -4.50, 
-      date: "2025-04-14", 
-      category: "Food",
-      type: "expense" 
-    },
-    { 
-      id: 4, 
-      description: "Bus Pass", 
-      amount: -30.00, 
-      date: "2025-04-12", 
-      category: "Transport",
-      type: "expense" 
-    },
-    { 
-      id: 5, 
-      description: "Scholarship", 
-      amount: 500.00, 
-      date: "2025-04-10", 
-      category: "Income",
-      type: "income" 
-    },
-    { 
-      id: 6, 
-      description: "Movie Tickets", 
-      amount: -12.50, 
-      date: "2025-04-08", 
-      category: "Entertainment",
-      type: "expense" 
-    },
-    { 
-      id: 7, 
-      description: "Phone Bill", 
-      amount: -35.00, 
-      date: "2025-04-05", 
-      category: "Bills",
-      type: "expense" 
-    },
-    { 
-      id: 8, 
-      description: "Tutoring Session", 
-      amount: 50.00, 
-      date: "2025-04-03", 
-      category: "Income",
-      type: "income" 
-    },
-  ]);
+  const [transactions, setTransactions] = useState([]);
   
   const [newTransaction, setNewTransaction] = useState({
     description: "",
@@ -96,6 +33,8 @@ const Transactions = () => {
   });
   
   const [searchTerm, setSearchTerm] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { toast } = useToast();
   
   const categories = [
     "Food", "Transport", "Entertainment", "Groceries", "Bills", "Education", 
@@ -103,38 +42,106 @@ const Transactions = () => {
   ];
   
   const { currency } = useCurrency();
+
+  // Fetch transactions from Supabase
+  useEffect(() => {
+    fetchTransactions();
+    
+    // Set up real-time updates
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions'
+        },
+        () => {
+          fetchTransactions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchTransactions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTransactions(data || []);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch transactions",
+        variant: "destructive"
+      });
+    }
+  };
   
   const filteredTransactions = transactions.filter(tx => 
     tx.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
     tx.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
-  const handleAddTransaction = () => {
+  const handleAddTransaction = async () => {
     if (!newTransaction.description || !newTransaction.amount || !newTransaction.category) {
-      return; // In a real app, show validation error
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
     }
     
-    const amount = newTransaction.type === "expense" 
-      ? -Math.abs(parseFloat(newTransaction.amount)) 
-      : Math.abs(parseFloat(newTransaction.amount));
-    
-    const transaction = {
-      id: transactions.length + 1,
-      description: newTransaction.description,
-      amount,
-      date: newTransaction.date,
-      category: newTransaction.category,
-      type: newTransaction.type
-    };
-    
-    setTransactions([transaction, ...transactions]);
-    setNewTransaction({
-      description: "",
-      amount: "",
-      date: new Date().toISOString().split('T')[0],
-      category: "",
-      type: "expense"
-    });
+    try {
+      const amount = parseFloat(newTransaction.amount);
+      
+      const { error } = await supabase
+        .from('transactions')
+        .insert([
+          {
+            description: newTransaction.description,
+            amount: amount,
+            date: newTransaction.date,
+            category: newTransaction.category,
+            type: newTransaction.type,
+            user_id: (await supabase.auth.getUser()).data.user?.id
+          }
+        ]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Transaction added successfully"
+      });
+
+      setNewTransaction({
+        description: "",
+        amount: "",
+        date: new Date().toISOString().split('T')[0],
+        category: "",
+        type: "expense"
+      });
+      
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add transaction",
+        variant: "destructive"
+      });
+    }
   };
 
   const formatDate = (dateString) => {
@@ -151,7 +158,7 @@ const Transactions = () => {
             <p className="text-muted-foreground">Manage your income and expenses</p>
           </div>
           
-          <Dialog>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-finmate-purple hover:bg-finmate-dark-purple">
                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -293,9 +300,9 @@ const Transactions = () => {
                     </td>
                     <td className="p-4 text-right">
                       <div className={`font-medium flex items-center justify-end
-                        ${tx.amount > 0 ? 'text-green-600' : 'text-red-500'}`}
+                        ${tx.type === 'income' ? 'text-green-600' : 'text-red-500'}`}
                       >
-                        {tx.amount > 0 ? (
+                        {tx.type === 'income' ? (
                           <ArrowUp className="h-4 w-4 mr-1" />
                         ) : (
                           <ArrowDown className="h-4 w-4 mr-1" />
@@ -327,7 +334,7 @@ const Transactions = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(transactions.filter(tx => tx.amount > 0).reduce((sum, tx) => sum + tx.amount, 0), currency.code)}
+                {formatCurrency(transactions.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + parseFloat(tx.amount), 0), currency.code)}
               </div>
               <p className="text-xs text-muted-foreground">Total Income</p>
             </CardContent>
@@ -341,7 +348,7 @@ const Transactions = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-500">
-                {formatCurrency(Math.abs(transactions.filter(tx => tx.amount < 0).reduce((sum, tx) => sum + tx.amount, 0)), currency.code)}
+                {formatCurrency(transactions.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + parseFloat(tx.amount), 0), currency.code)}
               </div>
               <p className="text-xs text-muted-foreground">Total Expenses</p>
             </CardContent>
