@@ -46,6 +46,26 @@ const Budget = () => {
     if (user) {
       fetchBudgetCategories();
       calculateMonthlyIncome();
+      
+      // Set up real-time transaction updates to recalculate spent amounts
+      const channel = supabase
+        .channel('schema-db-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'transactions'
+          },
+          () => {
+            fetchBudgetCategories(); // Refresh budget categories when transactions change
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user, isLoading, navigate]);
 
@@ -61,7 +81,33 @@ const Budget = () => {
         return;
       }
 
-      setBudgetCategories(data || []);
+      // Calculate actual spent amounts from transactions for each category
+      const categoriesWithSpent = await Promise.all(
+        (data || []).map(async (category) => {
+          const { data: transactions, error: txError } = await supabase
+            .from('transactions')
+            .select('amount')
+            .eq('category', category.name)
+            .eq('type', 'expense');
+          
+          if (txError) {
+            console.error('Error fetching transactions for category:', txError);
+            return category;
+          }
+          
+          const actualSpent = (transactions || []).reduce((sum, tx) => sum + parseFloat(tx.amount.toString()), 0);
+          
+          // Update the database with the calculated spent amount
+          await supabase
+            .from('budget_categories')
+            .update({ spent: actualSpent })
+            .eq('id', category.id);
+          
+          return { ...category, spent: actualSpent };
+        })
+      );
+
+      setBudgetCategories(categoriesWithSpent);
     } catch (error) {
       toast.error('Failed to fetch budget categories');
     }

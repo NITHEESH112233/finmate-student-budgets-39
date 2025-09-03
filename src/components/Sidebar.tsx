@@ -11,19 +11,10 @@ import {
   LogOut,
   User
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Sidebar = () => {
-  // In a real app with proper auth context, this would come from context
-  const [user, setUser] = useState<any>(null);
-  
-  useEffect(() => {
-    // Get user data from localStorage
-    const userData = localStorage.getItem("finmateUser");
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
-  }, []);
+  const { user, profile, logout } = useAuth();
 
   const navItems = [
     { icon: Home, label: "Dashboard", path: "/" },
@@ -36,9 +27,8 @@ const Sidebar = () => {
     { icon: Settings, label: "Settings", path: "/settings" },
   ];
 
-  const handleLogout = () => {
-    localStorage.removeItem("finmateUser");
-    window.location.href = "/auth";
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (
@@ -53,9 +43,9 @@ const Sidebar = () => {
       <div className="mb-8">
         <div className="px-4 py-3 bg-finmate-light-purple rounded-lg">
           <p className="text-sm text-gray-600">Welcome</p>
-          <p className="font-medium">{user?.name || "Guest"}</p>
-          {user?.university && (
-            <p className="text-xs text-gray-500 mt-1">{user.university}</p>
+          <p className="font-medium">{profile?.name || user?.email || "Guest"}</p>
+          {profile?.university && (
+            <p className="text-xs text-gray-500 mt-1">{profile.university}</p>
           )}
         </div>
       </div>
