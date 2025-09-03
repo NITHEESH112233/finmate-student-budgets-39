@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
-import { PlusCircle, Search } from "lucide-react";
+import { PlusCircle, Search, Target, Calendar, TrendingUp, Sparkles } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
@@ -37,6 +37,26 @@ const Goals = () => {
   useEffect(() => {
     if (user) {
       fetchGoals();
+      
+      // Set up real-time updates
+      const channel = supabase
+        .channel('schema-db-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'goals'
+          },
+          () => {
+            fetchGoals();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
@@ -159,6 +179,8 @@ const Goals = () => {
       if (!goal) return;
 
       const newAmount = Math.min(goal.current_amount + numAmount, goal.target_amount);
+      const wasCompleted = goal.current_amount >= goal.target_amount;
+      const isNowCompleted = newAmount >= goal.target_amount;
       
       const { error } = await supabase
         .from('goals')
@@ -167,10 +189,18 @@ const Goals = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: `Added ${numAmount.toFixed(2)} to ${goal.name}`
-      });
+      // Show celebration if goal just completed
+      if (!wasCompleted && isNowCompleted) {
+        toast({
+          title: "🎉 Goal Completed!",
+          description: `Congratulations! You've reached your goal for ${goal.name}!`,
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: `Added $${numAmount.toFixed(2)} to ${goal.name}`
+        });
+      }
 
       fetchGoals();
     } catch (error) {
@@ -290,45 +320,105 @@ const Goals = () => {
           {filteredAndSortedGoals.map((goal) => {
             const progressPercentage = Math.round((goal.current_amount / goal.target_amount) * 100);
             const daysLeft = calculateDaysLeft(goal.target_date);
+            const isCompleted = progressPercentage >= 100;
+            const isNearCompletion = progressPercentage >= 90;
+            const remaining = goal.target_amount - goal.current_amount;
 
             return (
-              <Card key={goal.id}>
+              <Card key={goal.id} className={`transition-all duration-500 ${isCompleted ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 shadow-lg animate-pulse' : 'hover:shadow-md'}`}>
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
-                    <CardTitle>{goal.name}</CardTitle>
-                    <div className="px-2 py-1 bg-finmate-light-purple text-finmate-purple text-xs font-medium rounded-full">
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className={`h-4 w-4 ${isCompleted ? 'text-green-600' : 'text-finmate-purple'}`} />
+                      {goal.name}
+                      {isCompleted && <Sparkles className="h-4 w-4 text-yellow-500 animate-bounce" />}
+                    </CardTitle>
+                    <div className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      isCompleted ? 'bg-green-100 text-green-700' : 
+                      isNearCompletion ? 'bg-yellow-100 text-yellow-700' : 
+                      'bg-finmate-light-purple text-finmate-purple'
+                    }`}>
                       {progressPercentage}% Complete
                     </div>
                   </div>
-                  <CardDescription>
+                  <CardDescription className="flex items-center gap-2">
+                    <Calendar className="h-3 w-3" />
                     Due by {formatDate(goal.target_date)}
+                    {daysLeft < 30 && daysLeft > 0 && (
+                      <span className="text-orange-600 text-xs font-medium">⚡ {daysLeft} days left</span>
+                    )}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Progress value={progressPercentage} className="h-2" />
+                  <div className="space-y-2">
+                    <Progress 
+                      value={progressPercentage} 
+                      className={`h-3 transition-all duration-500 ${isCompleted ? 'animate-pulse' : ''}`}
+                    />
+                    <div className="text-center">
+                      {isCompleted ? (
+                        <div className="text-sm font-medium text-green-600 flex items-center justify-center gap-1">
+                          🎉 Goal Completed! 🎉
+                        </div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground">
+                          ${remaining.toFixed(2)} remaining to reach your goal
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
                   <div className="flex justify-between text-sm">
                     <div className="space-y-1">
-                      <p className="text-muted-foreground">Current</p>
-                      <p className="font-medium">₹{parseFloat(goal.current_amount || 0).toFixed(2)}</p>
+                      <p className="text-muted-foreground flex items-center gap-1">
+                        <TrendingUp className="h-3 w-3" />
+                        Current
+                      </p>
+                      <p className="font-medium">${parseFloat(goal.current_amount || 0).toFixed(2)}</p>
                     </div>
                     <div className="space-y-1 text-right">
                       <p className="text-muted-foreground">Target</p>
-                      <p className="font-medium">₹{parseFloat(goal.target_amount || 0).toFixed(2)}</p>
+                      <p className="font-medium">${parseFloat(goal.target_amount || 0).toFixed(2)}</p>
                     </div>
+                  </div>
+
+                  {/* Visual progress indicators */}
+                  <div className="grid grid-cols-4 gap-1">
+                    {Array.from({ length: 4 }).map((_, index) => {
+                      const quarterProgress = (progressPercentage / 25) - index;
+                      const quarterFill = Math.min(Math.max(quarterProgress, 0), 1);
+                      return (
+                        <div 
+                          key={index}
+                          className={`h-1 rounded-full transition-all duration-300 ${
+                            quarterFill > 0 ? 'bg-finmate-purple' : 'bg-gray-200'
+                          }`}
+                          style={{ 
+                            width: `${quarterFill * 100}%`,
+                            minWidth: quarterFill > 0 ? '100%' : '100%',
+                            backgroundColor: quarterFill > 0 ? 
+                              (isCompleted ? '#10b981' : 
+                               isNearCompletion ? '#f59e0b' : 
+                               '#9b87f5') : '#e5e7eb'
+                          }}
+                        />
+                      );
+                    })}
                   </div>
 
                   <div className="pt-2 border-t">
                     <div className="flex justify-between items-center">
-                      <div className="text-sm text-muted-foreground">
-                        {daysLeft} days left
+                      <div className={`text-sm ${daysLeft < 7 ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
+                        {daysLeft <= 0 ? 'Overdue!' : `${daysLeft} days left`}
                       </div>
                       <Button 
                         size="sm" 
-                        variant="outline"
+                        variant={isCompleted ? "default" : "outline"}
                         onClick={() => handleAddFunds(goal.id)}
+                        disabled={isCompleted}
+                        className={isCompleted ? "bg-green-600 hover:bg-green-700" : ""}
                       >
-                        Add Funds
+                        {isCompleted ? "Completed" : "Add Funds"}
                       </Button>
                     </div>
                   </div>

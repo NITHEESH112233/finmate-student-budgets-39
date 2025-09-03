@@ -345,15 +345,26 @@ const Budget = () => {
                     <Progress value={(totalSpent / totalBudgeted) * 100} className="h-2" />
                   </div>
                   
-                  {unbudgeted > 0 && (
-                    <div className="bg-finmate-light-purple p-4 rounded-md flex items-center gap-3 text-sm">
-                      <AlertCircle className="h-4 w-4 text-finmate-purple" />
-                      <div>
-                        <p className="font-medium">You have ₹{unbudgeted.toFixed(2)} of unbudgeted income.</p>
-                        <p className="text-muted-foreground">Consider allocating these funds to savings or other categories.</p>
-                      </div>
-                    </div>
-                  )}
+                   {/* Overspending Alert */}
+                   {budgetCategories.some(cat => (parseFloat(cat.spent || 0) / parseFloat(cat.budget || 1)) > 1) && (
+                     <div className="bg-red-50 border border-red-200 p-4 rounded-md flex items-center gap-3 text-sm">
+                       <AlertCircle className="h-4 w-4 text-red-500" />
+                       <div>
+                         <p className="font-medium text-red-700">Warning: You're overspending in some categories!</p>
+                         <p className="text-red-600">Review your spending and adjust your budget to stay on track.</p>
+                       </div>
+                     </div>
+                   )}
+                   
+                   {unbudgeted > 0 && (
+                     <div className="bg-finmate-light-purple p-4 rounded-md flex items-center gap-3 text-sm">
+                       <AlertCircle className="h-4 w-4 text-finmate-purple" />
+                       <div>
+                         <p className="font-medium">You have ₹{unbudgeted.toFixed(2)} of unbudgeted income.</p>
+                         <p className="text-muted-foreground">Consider allocating these funds to savings or other categories.</p>
+                       </div>
+                     </div>
+                   )}
                 </div>
               </CardContent>
             </Card>
@@ -367,42 +378,69 @@ const Budget = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {budgetCategories.map((category) => (
-                    <div key={category.id} className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: category.color }}
-                          />
-                          <span className="font-medium">{category.name}</span>
-                        </div>
-                        <div className="text-sm">
-                          <span className="font-medium">₹{parseFloat(category.spent || 0).toFixed(2)}</span>
-                          {' '}of{' '}
-                          {editingBudgets ? (
-                            <Input
-                              className="w-20 h-6 inline-block"
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              defaultValue={parseFloat(category.budget || 0)}
-                              onChange={(e) => handleBudgetEdit(category.id, e.target.value)}
+                  {budgetCategories.map((category) => {
+                    const spentAmount = parseFloat(category.spent || 0);
+                    const budgetAmount = parseFloat(category.budget || 1);
+                    const progressPercentage = (spentAmount / budgetAmount) * 100;
+                    const isOverspent = progressPercentage > 100;
+                    const isNearLimit = progressPercentage > 80;
+                    
+                    return (
+                      <div key={category.id} className={`space-y-2 p-3 rounded-lg transition-all ${
+                        isOverspent ? 'bg-red-50 border border-red-200 animate-pulse' : 
+                        isNearLimit ? 'bg-yellow-50 border border-yellow-200' : 
+                        'bg-white'
+                      }`}>
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: category.color }}
                             />
-                          ) : (
-                            <span className="font-medium">₹{parseFloat(category.budget || 0).toFixed(2)}</span>
+                            <span className={`font-medium ${isOverspent ? 'text-red-700' : ''}`}>
+                              {category.name}
+                            </span>
+                            {isOverspent && (
+                              <AlertCircle className="h-4 w-4 text-red-500" />
+                            )}
+                          </div>
+                          <div className="text-sm">
+                            <span className={`font-medium ${isOverspent ? 'text-red-600' : ''}`}>
+                              ₹{spentAmount.toFixed(2)}
+                            </span>
+                            {' '}of{' '}
+                            {editingBudgets ? (
+                              <Input
+                                className="w-20 h-6 inline-block"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                defaultValue={budgetAmount}
+                                onChange={(e) => handleBudgetEdit(category.id, e.target.value)}
+                              />
+                            ) : (
+                              <span className="font-medium">₹{budgetAmount.toFixed(2)}</span>
+                            )}
+                          </div>
+                        </div>
+                        <Progress 
+                          value={Math.min(progressPercentage, 100)} 
+                          className={`h-2 ${isOverspent ? 'bg-red-100' : isNearLimit ? 'bg-yellow-100' : ''}`}
+                        />
+                        <div className="flex justify-between text-xs">
+                          <div className={`${isOverspent ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
+                            {Math.round(progressPercentage)}% used
+                            {isOverspent && ` (₹${(spentAmount - budgetAmount).toFixed(2)} over budget)`}
+                          </div>
+                          {isOverspent && (
+                            <div className="text-red-600 font-medium animate-bounce">
+                              ⚠️ Over Budget!
+                            </div>
                           )}
                         </div>
                       </div>
-                      <Progress 
-                        value={((parseFloat(category.spent || 0)) / (parseFloat(category.budget || 1))) * 100} 
-                        className="h-2"
-                      />
-                      <div className="flex justify-end text-xs text-muted-foreground">
-                        {Math.round(((parseFloat(category.spent || 0)) / (parseFloat(category.budget || 1))) * 100)}% used
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
