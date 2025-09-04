@@ -9,7 +9,12 @@ import {
   Wallet,
   Settings,
   LogOut,
-  User
+  User,
+  Target,
+  DollarSign,
+  Users,
+  BarChart3,
+  Bell
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -17,12 +22,15 @@ const Sidebar = () => {
   const { user, profile, logout } = useAuth();
 
   const navItems = [
-    { icon: Home, label: "Dashboard", path: "/" },
+    { icon: Home, label: "Dashboard", path: "/dashboard" },
     { icon: CreditCard, label: "Transactions", path: "/transactions" },
     { icon: PieChart, label: "Budget", path: "/budget" },
-    { icon: Wallet, label: "Income", path: "/income" },
+    { icon: DollarSign, label: "Income", path: "/income" },
+    { icon: Target, label: "Goals", path: "/goals" },
     { icon: BarChart, label: "Reports", path: "/reports" },
-    { icon: Wallet, label: "Goals", path: "/goals" },
+    { icon: Users, label: "Shared Expenses", path: "/shared-expenses" },
+    { icon: BarChart3, label: "Analytics", path: "/analytics" },
+    { icon: Bell, label: "Bill Reminders", path: "/bill-reminders" },
     { icon: User, label: "Profile", path: "/profile" },
     { icon: Settings, label: "Settings", path: "/settings" },
   ];

@@ -16,6 +16,9 @@ import Income from "./pages/Income";
 import NotFound from "./pages/NotFound";
 import PrivateRoute from "./components/PrivateRoute";
 import Reports from "./pages/Reports";
+import SharedExpenses from "./pages/SharedExpenses";
+import Analytics from "./pages/Analytics";
+import BillReminders from "./pages/BillReminders";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 
 const queryClient = new QueryClient();
@@ -84,6 +87,30 @@ const App = () => (
                 element={
                   <PrivateRoute>
                     <Reports />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/shared-expenses"
+                element={
+                  <PrivateRoute>
+                    <SharedExpenses />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/analytics"
+                element={
+                  <PrivateRoute>
+                    <Analytics />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/bill-reminders"
+                element={
+                  <PrivateRoute>
+                    <BillReminders />
                   </PrivateRoute>
                 }
               />

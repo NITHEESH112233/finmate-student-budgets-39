@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      bill_reminders: {
+        Row: {
+          amount: number
+          auto_pay: boolean
+          category: string
+          created_at: string
+          description: string | null
+          due_date: string
+          frequency: string
+          id: string
+          is_paid: boolean
+          next_due_date: string | null
+          reminder_days: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          auto_pay?: boolean
+          category?: string
+          created_at?: string
+          description?: string | null
+          due_date: string
+          frequency: string
+          id?: string
+          is_paid?: boolean
+          next_due_date?: string | null
+          reminder_days?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          auto_pay?: boolean
+          category?: string
+          created_at?: string
+          description?: string | null
+          due_date?: string
+          frequency?: string
+          id?: string
+          is_paid?: boolean
+          next_due_date?: string | null
+          reminder_days?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       budget_categories: {
         Row: {
           budget: number
@@ -46,6 +97,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      expense_participants: {
+        Row: {
+          amount_owed: number
+          amount_paid: number
+          created_at: string
+          expense_id: string
+          id: string
+          is_settled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_owed: number
+          amount_paid?: number
+          created_at?: string
+          expense_id: string
+          id?: string
+          is_settled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_owed?: number
+          amount_paid?: number
+          created_at?: string
+          expense_id?: string
+          id?: string
+          is_settled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_participants_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "shared_expenses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       goals: {
         Row: {
@@ -113,6 +205,48 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          bill_reminders: boolean
+          budget_alerts: boolean
+          created_at: string
+          email_notifications: boolean
+          expense_updates: boolean
+          goal_updates: boolean
+          id: string
+          in_app_notifications: boolean
+          push_notifications: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bill_reminders?: boolean
+          budget_alerts?: boolean
+          created_at?: string
+          email_notifications?: boolean
+          expense_updates?: boolean
+          goal_updates?: boolean
+          id?: string
+          in_app_notifications?: boolean
+          push_notifications?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bill_reminders?: boolean
+          budget_alerts?: boolean
+          created_at?: string
+          email_notifications?: boolean
+          expense_updates?: boolean
+          goal_updates?: boolean
+          id?: string
+          in_app_notifications?: boolean
+          push_notifications?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -143,6 +277,80 @@ export type Database = {
           university?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      settlements: {
+        Row: {
+          amount: number
+          created_at: string
+          expense_id: string
+          from_user_id: string
+          id: string
+          settled_at: string
+          to_user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          expense_id: string
+          from_user_id: string
+          id?: string
+          settled_at?: string
+          to_user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          expense_id?: string
+          from_user_id?: string
+          id?: string
+          settled_at?: string
+          to_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settlements_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "shared_expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_expenses: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_settled: boolean
+          title: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_settled?: boolean
+          title: string
+          total_amount: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_settled?: boolean
+          title?: string
+          total_amount?: number
+          updated_at?: string
         }
         Relationships: []
       }
