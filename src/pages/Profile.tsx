@@ -11,11 +11,11 @@ import { toast } from "sonner";
 import { User, CreditCard, Bell, Image } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Profile = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, profile, logout, updateProfile, isLoading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   
@@ -36,39 +36,31 @@ const Profile = () => {
   });
 
   useEffect(() => {
-    const userData = localStorage.getItem("finmateUser");
-    if (userData) {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
+    if (user && profile) {
       setProfileForm({
-        name: parsedUser.name || "",
-        email: parsedUser.email || "",
-        university: parsedUser.university || "",
-        studentId: parsedUser.studentId || "",
+        name: profile.name || "",
+        email: user.email || "",
+        university: profile.university || "",
+        studentId: profile.student_id || "",
       });
-      setProfileImageUrl(parsedUser.profileImage || null);
-    } else {
-      navigate("/auth");
     }
-    setLoading(false);
-  }, [navigate]);
+  }, [user, profile]);
 
-  const handleUpdateProfile = (e: React.FormEvent) => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (user) {
-      const updatedUser = {
-        ...user,
+      const { error } = await updateProfile({
         name: profileForm.name,
-        email: profileForm.email,
         university: profileForm.university,
-        studentId: profileForm.studentId,
-        profileImage: profileImageUrl,
-      };
+        student_id: profileForm.studentId,
+      });
       
-      localStorage.setItem("finmateUser", JSON.stringify(updatedUser));
-      setUser(updatedUser);
-      toast.success("Profile updated successfully");
+      if (error) {
+        toast.error("Failed to update profile");
+      } else {
+        toast.success("Profile updated successfully");
+      }
     }
   };
 
@@ -88,10 +80,9 @@ const Profile = () => {
     fileInputRef.current?.click();
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("finmateUser");
+  const handleLogout = async () => {
+    await logout();
     toast.success("Logged out successfully");
-    navigate("/auth");
   };
 
   const handleNotificationChange = (key: string, value: boolean) => {
@@ -106,7 +97,7 @@ const Profile = () => {
     navigate("/settings");
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-full">
@@ -177,9 +168,9 @@ const Profile = () => {
                     <div>
                       <h3 className="font-medium">{profileForm.name}</h3>
                       <p className="text-sm text-muted-foreground">{profileForm.email}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Joined {user ? new Date(user.joinedDate).toLocaleDateString() : ''}
-                      </p>
+                       <p className="text-xs text-muted-foreground mt-1">
+                         {profile?.university && `Student at ${profile.university}`}
+                       </p>
                     </div>
                   </div>
 
