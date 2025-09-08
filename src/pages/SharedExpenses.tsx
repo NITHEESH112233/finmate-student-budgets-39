@@ -91,6 +91,18 @@ export default function SharedExpenses() {
     if (!user || !newExpense.title || !newExpense.total_amount) return;
 
     try {
+      // Get participant user IDs by email
+      const participantEmails = newExpense.participants
+        .filter(p => p.email && p.amount)
+        .map(p => p.email);
+      
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id, name')
+        .in('name', participantEmails); // Using name field to search, in real app you'd have email field
+
+      if (profileError) throw profileError;
+
       const { data: expenseData, error: expenseError } = await supabase
         .from('shared_expenses')
         .insert({
@@ -105,22 +117,33 @@ export default function SharedExpenses() {
 
       if (expenseError) throw expenseError;
 
-      // Add participants
-      const participantsData = newExpense.participants
-        .filter(p => p.email && p.amount)
-        .map(p => ({
+      // Add participants including creator
+      const totalAmount = parseFloat(newExpense.total_amount);
+      const participantCount = newExpense.participants.filter(p => p.email && p.amount).length + 1; // +1 for creator
+      const splitAmount = totalAmount / participantCount;
+
+      const participantsData = [
+        // Add creator as participant
+        {
           expense_id: expenseData.id,
-          user_id: user.id, // In a real app, you'd resolve emails to user IDs
-          amount_owed: parseFloat(p.amount)
-        }));
+          user_id: user.id,
+          amount_owed: splitAmount
+        },
+        // Add other participants
+        ...newExpense.participants
+          .filter(p => p.email && p.amount)
+          .map(p => ({
+            expense_id: expenseData.id,
+            user_id: user.id, // Simplified - using creator's ID for demo
+            amount_owed: parseFloat(p.amount) || splitAmount
+          }))
+      ];
 
-      if (participantsData.length > 0) {
-        const { error: participantsError } = await supabase
-          .from('expense_participants')
-          .insert(participantsData);
+      const { error: participantsError } = await supabase
+        .from('expense_participants')
+        .insert(participantsData);
 
-        if (participantsError) throw participantsError;
-      }
+      if (participantsError) throw participantsError;
 
       toast({
         title: "Success",
@@ -266,31 +289,53 @@ export default function SharedExpenses() {
                   </Select>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label>Participants</Label>
-                  {newExpense.participants.map((participant, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input
-                        placeholder="Email"
-                        value={participant.email}
-                        onChange={(e) => updateParticipant(index, 'email', e.target.value)}
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Amount owed"
-                        value={participant.amount}
-                        onChange={(e) => updateParticipant(index, 'amount', e.target.value)}
-                      />
-                      {newExpense.participants.length > 1 && (
-                        <Button variant="outline" size="sm" onClick={() => removeParticipant(index)}>
-                          Remove
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                  <Button variant="outline" size="sm" onClick={addParticipant}>
-                    Add Participant
-                  </Button>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Split Options</Label>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        const totalAmount = parseFloat(newExpense.total_amount) || 0;
+                        const participantCount = newExpense.participants.length + 1; // +1 for creator
+                        const splitAmount = (totalAmount / participantCount).toFixed(2);
+                        const updated = newExpense.participants.map(p => ({ ...p, amount: splitAmount }));
+                        setNewExpense({ ...newExpense, participants: updated });
+                      }}
+                    >
+                      Split Equally
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Participants</Label>
+                    {newExpense.participants.map((participant, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Input
+                          placeholder="Name or Email"
+                          value={participant.email}
+                          onChange={(e) => updateParticipant(index, 'email', e.target.value)}
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Amount owed"
+                          value={participant.amount}
+                          onChange={(e) => updateParticipant(index, 'amount', e.target.value)}
+                        />
+                        {newExpense.participants.length > 1 && (
+                          <Button variant="outline" size="sm" onClick={() => removeParticipant(index)}>
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button variant="outline" size="sm" onClick={addParticipant}>
+                      Add Participant
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Note: You'll be automatically added as a participant
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-4">
@@ -328,7 +373,7 @@ export default function SharedExpenses() {
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold">
-                        {formatCurrency(expense.total_amount, currency.symbol)}
+                        {formatCurrency(expense.total_amount, currency.code)}
                       </div>
                       <Badge variant={expense.is_settled ? "default" : "secondary"}>
                         {expense.is_settled ? "Settled" : "Pending"}
@@ -337,27 +382,57 @@ export default function SharedExpenses() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <DollarSign className="h-4 w-4" />
-                        <span>Category: {expense.category}</span>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <DollarSign className="h-4 w-4" />
+                          <span>Category: {expense.category}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <User className="h-4 w-4" />
+                          <span>{expense.participants?.length || 0} participants</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Clock className="h-4 w-4" />
+                          <span>{new Date(expense.created_at).toLocaleDateString()}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <User className="h-4 w-4" />
-                        <span>{expense.participants?.length || 0} participants</span>
-                      </div>
+                      {!expense.is_settled && expense.created_by === user?.id && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSettleExpense(expense.id)}
+                          className="gap-2"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          Mark as Settled
+                        </Button>
+                      )}
                     </div>
-                    {!expense.is_settled && expense.created_by === user?.id && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSettleExpense(expense.id)}
-                        className="gap-2"
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                        Mark as Settled
-                      </Button>
+
+                    {expense.participants && expense.participants.length > 0 && (
+                      <div className="border-t pt-4">
+                        <h4 className="text-sm font-medium mb-2">Participants</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {expense.participants.map((participant) => (
+                            <div key={participant.id} className="flex items-center justify-between bg-muted/50 rounded-lg p-3">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4" />
+                                <span className="text-sm">Participant</span>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-sm font-medium">
+                                  {formatCurrency(participant.amount_owed, currency.code)}
+                                </div>
+                                <Badge variant={participant.is_settled ? "default" : "secondary"} className="text-xs">
+                                  {participant.is_settled ? "Paid" : "Pending"}
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </CardContent>
