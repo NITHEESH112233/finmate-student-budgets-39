@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import MainLayout from "@/layouts/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -117,31 +117,34 @@ export default function SharedExpenses() {
 
       if (expenseError) throw expenseError;
 
-      // Add participants including creator
+      // Build participants payload and prevent duplicates by user_id
       const totalAmount = parseFloat(newExpense.total_amount);
-      const participantCount = newExpense.participants.filter(p => p.email && p.amount).length + 1; // +1 for creator
-      const splitAmount = totalAmount / participantCount;
+      const intendedCount = newExpense.participants.filter(p => p.email && p.amount).length + 1; // +1 for creator
+      const splitAmount = totalAmount / intendedCount;
 
-      const participantsData = [
-        // Add creator as participant
+      const rawParticipants = [
         {
           expense_id: expenseData.id,
           user_id: user.id,
           amount_owed: splitAmount
         },
-        // Add other participants
         ...newExpense.participants
           .filter(p => p.email && p.amount)
           .map(p => ({
             expense_id: expenseData.id,
-            user_id: user.id, // Simplified - using creator's ID for demo
+            user_id: user.id, // Placeholder: current RLS allows only self inserts
             amount_owed: parseFloat(p.amount) || splitAmount
           }))
       ];
 
+      // Deduplicate by user_id to avoid unique(expense_id,user_id) violations
+      const dedupedParticipants = Array.from(
+        new Map(rawParticipants.map(p => [p.user_id, p])).values()
+      );
+
       const { error: participantsError } = await supabase
         .from('expense_participants')
-        .insert(participantsData);
+        .insert(dedupedParticipants);
 
       if (participantsError) throw participantsError;
 
@@ -243,6 +246,7 @@ export default function SharedExpenses() {
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Create Shared Expense</DialogTitle>
+                <DialogDescription>Fill in expense details and participants.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
